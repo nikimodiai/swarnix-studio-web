@@ -42,7 +42,7 @@ export const FAQ_GROUPS = [
       },
       {
         q: 'The result is not what I expected — do I get a refund?',
-        a: 'Credits are consumed for every successful generation, even if you don’t love the result — each run costs us real AI compute. Small changes to your photo (sharper, well-lit, plain background) or your description usually improve results a lot. If something looks broken rather than just off-style, contact support and we’ll make it right.',
+        a: 'Credits are consumed on every successful generation, as each run carries a real compute cost regardless of the outcome. Small adjustments to your photo (sharper focus, better lighting, a plain background) or a more specific description often improve the result significantly. If the output appears genuinely broken rather than simply not matching your preferred style, please contact support and we will make it right.',
       },
     ],
   },
@@ -80,7 +80,7 @@ export const FAQ_GROUPS = [
       },
       {
         q: 'How many jewellers can I refer?',
-        a: 'There is no limit — every successful referral earns you another 10 credits.',
+        a: 'Up to 10 successful referrals, earning you up to 100 free credits in total.',
       },
     ],
   },
