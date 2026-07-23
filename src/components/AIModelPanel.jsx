@@ -672,7 +672,7 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
 
               {!canUse && (
                 <div className={styles.upgradeNote}>
-                  You’re out of credits. Buy more to keep generating AI models.
+                  You’re out of credits. Credit packs are coming soon — meanwhile, use Refer &amp; Earn to get 10 free credits.
                 </div>
               )}
             </>

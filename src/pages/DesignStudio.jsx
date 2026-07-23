@@ -175,7 +175,7 @@ export default function DesignStudio({ onBack }) {
 
       {!canUse && (
         <div className={styles.limitNote}>
-          You’re out of credits. Buy more to keep generating designs.
+          You’re out of credits. Credit packs are coming soon — meanwhile, use Refer &amp; Earn to get 10 free credits.
         </div>
       )}
 

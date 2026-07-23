@@ -40,6 +40,7 @@
 .grad_whatsapp_catalog  { background: linear-gradient(135deg, #1B2A1B, #6E9E6E); }
 .grad_referrals         { background: linear-gradient(135deg, #8B5E3C, #DEB896); }
 .grad_store_branding    { background: linear-gradient(135deg, #14263f, #4A6FA5); }
+.grad_faq               { background: linear-gradient(135deg, #3C4A5E, #C9A84C); }
 
 .topbarRight { display: flex; align-items: center; gap: 12px; flex: none; }
 

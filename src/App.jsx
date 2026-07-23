@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Gem, LogOut, Plus, TrendingUp, PartyPopper, BookImage, Gift, Store,
+  Gem, LogOut, Plus, TrendingUp, PartyPopper, BookImage, Gift, Store, HelpCircle,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
@@ -13,10 +13,16 @@ import FestivalPosters from './pages/studio/FestivalPosters';
 import WhatsAppCatalog from './pages/studio/WhatsAppCatalog';
 import Referrals from './pages/studio/Referrals';
 import StoreBranding from './pages/studio/StoreBranding';
+import Faq from './pages/studio/Faq';
 import Footer from './components/Footer';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
 import styles from './App.module.css';
+
+// Credit purchases are disabled while Razorpay runs on the test account only.
+// Flip to true once the real bank account is integrated — every Buy entry
+// point (topbar pill, avatar menu, footer, buy-credits route) keys off this.
+export const PURCHASES_ENABLED = false;
 
 // Free marketing tools — no credits used. Reached via compact chip buttons
 // in the topbar (not the main 6-feature grid) so they stay one click away
@@ -58,6 +64,13 @@ const MARKETING_FEATURES = [
     icon: Store,
     render: (props) => <StoreBranding {...props} />,
   },
+  {
+    id: 'faq',
+    label: 'FAQ',
+    desc: 'Credits, refunds, referrals and features — answered.',
+    icon: HelpCircle,
+    render: (props) => <Faq {...props} />,
+  },
 ];
 
 function Topbar({ route, onNavigate }) {
@@ -92,9 +105,15 @@ function Topbar({ route, onNavigate }) {
           <Gem size={13} />
           <b>{creditsRemaining}</b>
           <span className={styles.creditsWord}>credits</span>
-          <button className={styles.buyBtn} onClick={() => onNavigate('buy-credits')}>
-            <Plus size={12} /> Buy
-          </button>
+          {PURCHASES_ENABLED ? (
+            <button className={styles.buyBtn} onClick={() => onNavigate('buy-credits')}>
+              <Plus size={12} /> Buy
+            </button>
+          ) : (
+            <button className={styles.buyBtn} disabled style={{ opacity: 0.55, cursor: "default" }} title="Credit packs are coming soon">
+              Coming soon
+            </button>
+          )}
         </div>
 
         <div className={styles.profileWrap}>
@@ -111,8 +130,8 @@ function Topbar({ route, onNavigate }) {
                   <strong>{profile?.full_name || 'Signed in'}</strong>
                   <span>{profile?.email}</span>
                 </div>
-                <button className={styles.menuItem} onClick={() => { setMenuOpen(false); onNavigate('buy-credits'); }}>
-                  <Gem size={15} /> Buy credits
+                <button className={styles.menuItem} disabled={!PURCHASES_ENABLED} style={PURCHASES_ENABLED ? undefined : { opacity: 0.55, cursor: "default" }} onClick={() => { if (!PURCHASES_ENABLED) return; setMenuOpen(false); onNavigate('buy-credits'); }}>
+                  <Gem size={15} /> {PURCHASES_ENABLED ? 'Buy credits' : 'Buy credits — coming soon'}
                 </button>
                 <button className={styles.menuItem} onClick={() => { setMenuOpen(false); signOut(); }}>
                   <LogOut size={15} /> Sign out
@@ -144,11 +163,11 @@ function Shell({ navigate }) {
         <div className={styles.mainInner}>
           {marketingFeature
             ? marketingFeature.render({ onBack: () => setRoute('studio'), onNavigate: setRoute })
-            : route === 'buy-credits'
+            : route === 'buy-credits' && PURCHASES_ENABLED
               ? <BuyCredits onBack={() => setRoute('studio')} />
               : <StudioSuite onNavigate={setRoute} />}
         </div>
-        <Footer navigate={navigate} onBuyCredits={() => setRoute('buy-credits')} />
+        <Footer navigate={navigate} onBuyCredits={PURCHASES_ENABLED ? () => setRoute('buy-credits') : null} />
       </main>
     </div>
   );

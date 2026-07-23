@@ -46,7 +46,9 @@ export default function Footer({ navigate, onBuyCredits }) {
               <p className={styles.colTitle}>Company</p>
               <ul className={styles.linkList}>
                 <li><a className={styles.linkAnchor} href={`mailto:${site.email}`}>Contact support</a></li>
-                <li><button className={styles.link} onClick={buyCredits}>Buy credits</button></li>
+                {onBuyCredits
+                  ? <li><button className={styles.link} onClick={buyCredits}>Buy credits</button></li>
+                  : <li><span className={styles.link} style={{ opacity: 0.55, cursor: "default" }}>Buy credits — coming soon</span></li>}
               </ul>
             </div>
 
