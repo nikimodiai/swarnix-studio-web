@@ -1,0 +1,110 @@
+/* Desktop: the whole app is one fixed-height column so the hero + feature
+   grid can fit a single screen without scrolling; only .main (which also
+   holds the footer) scrolls. Mobile relaxes this back to natural page
+   scroll since 6 tiles can't reasonably fit one small screen anyway. */
+.app { height: 100dvh; display: flex; flex-direction: column; }
+
+.boot { min-height: 100vh; display: grid; place-items: center; }
+
+.topbar {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px clamp(14px, 4vw, 28px);
+  background: linear-gradient(120deg, var(--navy, #0B1829) 0%, var(--navy-mid, #14263f) 100%);
+  border-radius: 0 0 18px 18px;
+  box-shadow: 0 8px 24px rgba(11,24,41,.14);
+}
+
+.brand { display: inline-flex; align-items: center; gap: 9px; background: none; border: none; cursor: pointer; padding: 0; flex: none; }
+.logoImg { height: 34px; width: auto; object-fit: contain; }
+.brandName { font-size: 14.5px; font-weight: 800; color: #fff; letter-spacing: -.01em; white-space: nowrap; }
+
+/* ── Marketing tools — compact chip buttons directly in the topbar ── */
+.marketingRow { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.marketingChip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px 5px 5px; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06);
+  cursor: pointer; white-space: nowrap;
+}
+.marketingChip:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.28); }
+.marketingChipActive { background: rgba(201,168,76,.18); border-color: rgba(201,168,76,.5); }
+.chipIcon {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  display: grid; place-items: center; color: #fff;
+}
+.chipLabel { font-size: 11.5px; font-weight: 700; color: #fff; }
+
+.grad_gold_rate         { background: linear-gradient(135deg, #7A1E1E, #D9B75F); }
+.grad_festival_posters  { background: linear-gradient(135deg, #5A3466, #E9B8D9); }
+.grad_whatsapp_catalog  { background: linear-gradient(135deg, #1B2A1B, #6E9E6E); }
+.grad_referrals         { background: linear-gradient(135deg, #8B5E3C, #DEB896); }
+.grad_store_branding    { background: linear-gradient(135deg, #14263f, #4A6FA5); }
+
+.topbarRight { display: flex; align-items: center; gap: 12px; flex: none; }
+
+.creditsPill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 8px 6px 12px; border-radius: 999px;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(201,168,76,.35);
+  color: #fff; font-size: 12.5px;
+}
+.creditsPill b { font-size: 14px; }
+.creditsWord { color: rgba(255,255,255,.6); }
+.buyBtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; border-radius: 999px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #DEB896 0%, #C9A84C 55%, #8B5E3C 100%);
+  color: #1a1206; font-size: 12px; font-weight: 800;
+}
+.buyBtn:hover { filter: brightness(1.05); }
+
+.profileWrap { position: relative; }
+.avatarBtn { background: none; border: none; cursor: pointer; padding: 0; }
+.avatar, .avatarFallback {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  border: 2px solid rgba(255,255,255,.25); object-fit: cover; box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+.avatarFallback { background: linear-gradient(135deg, #C9A84C, #e8b84b); color: #0B1829; font-weight: 800; font-size: 14px; }
+
+.menuScrim { position: fixed; inset: 0; z-index: 40; }
+.menu {
+  position: absolute; right: 0; top: 44px; z-index: 41; min-width: 220px;
+  background: #fff; color: var(--ink, #222); border-radius: 12px; overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.25); border: 1px solid var(--border, #e6e6ea);
+}
+.menuHead { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-bottom: 1px solid #f0f0f3; }
+.menuHead strong { font-size: 14px; }
+.menuHead span { font-size: 12px; color: var(--ink-soft, #8a8a92); word-break: break-all; }
+.menuItem {
+  width: 100%; display: flex; align-items: center; gap: 9px; padding: 11px 14px;
+  background: none; border: none; cursor: pointer; font-size: 13.5px; color: var(--ink, #222); text-align: left;
+}
+.menuItem:hover { background: #faf9f6; }
+
+.main {
+  flex: 1; min-height: 0; overflow-y: auto;
+  width: 100%;
+  display: flex; flex-direction: column;
+}
+.mainInner {
+  width: 100%; max-width: 1180px; margin: 0 auto;
+  padding: clamp(10px, 2vw, 16px) clamp(14px, 4vw, 24px) 0;
+}
+
+@media (max-width: 860px) {
+  .app { height: auto; min-height: 100dvh; }
+  .main { overflow-y: visible; }
+}
+
+@media (max-width: 860px) {
+  .topbar { flex-wrap: wrap; }
+  .marketingRow { order: 3; width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .creditsWord { display: none; }
+  .brandName { display: none; }
+  .chipLabel { display: none; }
+  .marketingChip { padding: 6px; }
+}

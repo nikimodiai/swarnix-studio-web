@@ -1,0 +1,50 @@
+.toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.addBtn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 10px 16px; border-radius: 10px; border: 1.5px dashed var(--border-card);
+  background: #fff; color: var(--navy); font-size: 13.5px; font-weight: 700; cursor: pointer;
+}
+.count { font-size: 13px; color: var(--ink-soft); }
+
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  padding: 60px 20px; color: var(--ink-soft);
+}
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.item {
+  background: #fff; border: 1px solid var(--border-card); border-radius: 14px; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.thumb { position: relative; aspect-ratio: 1; background: #f4f3ef; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.removeBtn {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%;
+  background: rgba(11,24,41,.65); color: #fff; border: none; cursor: pointer;
+  display: grid; place-items: center;
+}
+.itemFields { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+.itemFields input {
+  height: 32px; border-radius: 7px; border: 1px solid var(--border-card, #e5e5ea);
+  padding: 0 9px; font-size: 12.5px; color: var(--ink); font-family: inherit;
+}
+.itemFields input:focus { outline: none; border-color: var(--gold); }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.shareBtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 46px; padding: 0 20px; border-radius: 12px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #DEB896 0%, #C9A84C 55%, #8B5E3C 100%);
+  color: #1a1206; font-size: 14px; font-weight: 800;
+}
+.shareBtn:disabled { opacity: .6; cursor: not-allowed; }
+.secondaryBtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 46px; padding: 0 18px; border-radius: 12px; border: 1.5px solid var(--border-card); background: #fff;
+  color: var(--navy); font-size: 13.5px; font-weight: 700; cursor: pointer;
+}
+.freeNote {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 700; color: #166534; background: #E7F1EA;
+  border-radius: 999px; padding: 6px 12px;
+}

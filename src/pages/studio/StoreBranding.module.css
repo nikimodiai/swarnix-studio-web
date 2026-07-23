@@ -1,0 +1,37 @@
+.card {
+  max-width: 520px;
+  background: #fff; border: 1px solid var(--border-card); border-radius: 16px;
+  padding: 22px;
+}
+.hint { font-size: 13px; color: var(--ink-soft); margin: 0 0 18px; }
+
+.logoRow { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+.logoPicker {
+  width: 76px; height: 76px; border-radius: 14px; overflow: hidden;
+  background: #f4f3ef; border: 1px solid var(--border-card);
+  display: grid; place-items: center; cursor: pointer; color: var(--ink-soft);
+}
+.logoImg { width: 100%; height: 100%; object-fit: cover; }
+.logoMeta { display: flex; flex-direction: column; gap: 6px; }
+.logoBtn {
+  display: inline-flex; align-items: center; gap: 5px; background: none; border: none;
+  color: var(--gold-deep, #9a7b2e); font-size: 12.5px; font-weight: 700; cursor: pointer; padding: 0;
+}
+.logoBtn.muted { color: var(--ink-soft); }
+
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field label { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+.field input {
+  height: 44px; border-radius: 10px; border: 1.5px solid var(--border-card, #e5e5ea);
+  padding: 0 13px; font-size: 14.5px; color: var(--ink, #1f2430); font-family: inherit;
+}
+.field input:focus { outline: none; border-color: var(--gold); }
+
+.saveBtn {
+  width: 100%; height: 46px; margin-top: 4px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 12px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #DEB896 0%, #C9A84C 55%, #8B5E3C 100%);
+  color: #1a1206; font-size: 14.5px; font-weight: 800;
+}
+.saveBtn:disabled { opacity: .55; cursor: not-allowed; }

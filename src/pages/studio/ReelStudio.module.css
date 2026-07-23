@@ -1,0 +1,174 @@
+.usage {
+  font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
+  background: #fff; border: 1.5px solid var(--border-card);
+  border-radius: 99px; padding: 5px 12px; white-space: nowrap;
+}
+.form { max-width: 620px; }
+.section { margin-bottom: 20px; }
+.label { display: block; font-size: 14.5px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.muted { color: var(--ink-soft); font-weight: 500; }
+.hint { font-size: 13.5px; color: var(--ink-soft); margin: 8px 0 0; }
+.rowBetween { display: flex; align-items: center; justify-content: space-between; }
+
+/* Images */
+.imgGrid { display: flex; flex-wrap: wrap; gap: 10px; }
+.imgSlot { position: relative; width: 84px; height: 84px; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border-card); }
+.imgSlot img { width: 100%; height: 100%; object-fit: cover; }
+.imgRemove {
+  position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%;
+  border: none; background: rgba(190,18,60,.9); color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.imgIdx {
+  position: absolute; bottom: 3px; left: 3px; min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.addSlot {
+  width: 84px; height: 84px; border-radius: 10px; border: 2px dashed var(--border-card);
+  background: #fff; color: var(--ink-soft); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+}
+.addSlot:hover { border-color: var(--gold); color: var(--gold); }
+.addSlot small { font-size: 12.5px; }
+
+/* Format cards */
+.fmtCards { display: flex; flex-direction: column; gap: 8px; }
+.fmtCard {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 11px 14px; border: 1.5px solid var(--border-card); border-radius: var(--r-sm);
+  background: #fff; cursor: pointer; text-align: left; font-family: var(--font-body);
+}
+.fmtCard b { font-size: 14.5px; color: var(--navy); }
+.fmtCard small { font-size: 13px; color: var(--ink-soft); }
+.fmtActive { border-color: var(--gold); background: rgba(200,149,108,.1); }
+
+/* Slider */
+.slider { width: 100%; accent-color: var(--gold); margin: 6px 0; }
+.lengthVal { font-size: 15.5px; font-weight: 700; color: var(--gold); }
+
+/* Segment */
+.segment { display: flex; gap: 4px; background: var(--surface-alt, #f4f0e8); border-radius: var(--r-sm); padding: 3px; }
+.segItem {
+  flex: 1; padding: 9px 8px; border: none; border-radius: 8px; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; font-family: var(--font-body);
+}
+.segItem b { font-size: 14.5px; color: var(--ink); }
+.segItem small { font-size: 12px; color: var(--ink-soft); }
+.segActive { background: linear-gradient(135deg, #C9A84C, #e8b84b); }
+.segActive b, .segActive small { color: #0B1829; }
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  padding: 7px 12px; border: 1.5px solid var(--border-card); border-radius: 99px;
+  background: #fff; color: var(--ink); font-size: 14px; font-weight: 600;
+  font-family: var(--font-body); cursor: pointer;
+}
+.chip:hover { border-color: var(--gold); }
+.chipActive { border-color: var(--gold); background: rgba(200,149,108,.12); color: var(--navy); }
+
+/* Music picker */
+.musicList { display: flex; flex-direction: column; gap: 6px; }
+.musicRow {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 9px 12px; border: 1.5px solid var(--border-card); border-radius: var(--r-sm);
+  background: #fff; cursor: pointer; font-family: var(--font-body);
+}
+.musicRow:hover { border-color: var(--gold); }
+.musicActive { border-color: var(--gold); background: rgba(200,149,108,.1); }
+.musicName { flex: 1; font-size: 14.5px; font-weight: 600; color: var(--navy); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.musicMood { font-size: 12.5px; color: var(--ink-soft); }
+.musicIcon { color: var(--gold); }
+.previewBtn {
+  width: 28px; height: 28px; flex: none; border-radius: 50%; border: 1.5px solid var(--gold);
+  background: #fff; color: var(--gold); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.previewBtn:hover { background: var(--gold); color: #fff; }
+.musicRemove {
+  width: 22px; height: 22px; flex: none; border-radius: 50%; border: none;
+  background: rgba(190,18,60,.9); color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.uploadMusicBtn {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
+  padding: 8px 13px; border: 1.5px dashed var(--border-card); border-radius: var(--r-sm);
+  background: #fff; color: var(--ink-soft); font-size: 14px; font-weight: 600;
+  font-family: var(--font-body); cursor: pointer;
+}
+.uploadMusicBtn:hover { border-color: var(--gold); color: var(--gold); }
+.uploadMusicBtn:disabled { opacity: .6; cursor: default; }
+
+/* Overlay text styling */
+.miniLabel { display: block; font-size: 13px; font-weight: 700; color: var(--ink-soft); margin-bottom: 6px; }
+.overlayPreview {
+  margin-top: 10px; border-radius: var(--r-sm); padding: 22px 16px;
+  background: linear-gradient(135deg, #2a2a2a, #4a4038);
+  display: flex; align-items: flex-end; justify-content: center; min-height: 70px;
+}
+.overlayPreviewText {
+  font-size: 17.5px; font-weight: 700; text-align: center; line-height: 1.3;
+  text-shadow: 0 2px 4px rgba(0,0,0,.5); padding: 3px 8px;
+  background: rgba(0,0,0,.28); border-radius: 4px; max-width: 100%;
+  overflow-wrap: break-word;
+}
+.swatchRow { display: flex; flex-wrap: wrap; gap: 7px; }
+.swatch {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  border: 2px solid var(--border-card); padding: 0;
+}
+.swatchActive { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(200,149,108,.3); }
+
+/* Inputs */
+.input, .textarea {
+  width: 100%; border: 1.5px solid var(--border-card); border-radius: var(--r-sm);
+  background: #fff; color: var(--ink); padding: 10px 12px; font-size: 15.5px; font-family: var(--font-body);
+}
+.textarea { min-height: 72px; resize: vertical; }
+.input:focus, .textarea:focus { outline: none; border-color: var(--gold); }
+
+.errorRow { display: flex; align-items: center; gap: 7px; color: #be123c; font-size: 14.5px; margin-bottom: 12px; }
+.danger { color: #be123c; font-size: 14px; }
+
+.costRow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 15.5px; color: var(--ink); }
+.costVal { color: var(--gold); }
+
+.generateBtn {
+  width: 100%;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 18px; border: none; border-radius: var(--r-sm);
+  background: linear-gradient(135deg, #C9A84C, #e8b84b); color: #0B1829;
+  font-size: 15.5px; font-weight: 700; font-family: var(--font-body); cursor: pointer;
+}
+.generateBtn:disabled { opacity: .55; cursor: not-allowed; }
+
+/* Result view */
+.linkBtn {
+  display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px;
+  background: none; border: none; color: var(--gold); font-size: 14.5px; font-weight: 600;
+  font-family: var(--font-body); cursor: pointer;
+}
+.resultCard {
+  max-width: 480px; border: 1.5px solid var(--border-card); border-radius: var(--r-md, 14px);
+  background: #fff; overflow: hidden;
+}
+.video { width: 100%; display: block; background: #000; }
+.resultMeta { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; }
+.doneBadge { display: inline-flex; align-items: center; gap: 6px; color: #15803d; font-size: 14.5px; font-weight: 700; }
+.dlBtn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: var(--r-sm);
+  background: var(--navy); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none;
+}
+.progressBox {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;
+  padding: 42px 24px; color: var(--ink-soft);
+}
+.progressBox b { font-size: 16.5px; color: var(--navy); }
+.progressBox span { font-size: 14.5px; max-width: 40ch; }
+.spin { animation: spin 1s linear infinite; color: var(--gold); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 720px) {
+  .form { max-width: 100%; }
+}

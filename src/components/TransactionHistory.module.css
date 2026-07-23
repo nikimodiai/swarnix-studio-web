@@ -1,0 +1,39 @@
+.wrap { margin-top: 28px; margin-bottom: 32px; }
+
+.head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--navy, #0B1829); }
+.head svg { color: var(--gold-deep, #9a7b2e); }
+.title { font-size: 16px; font-weight: 800; margin: 0; }
+
+.center { padding: 28px 0; display: grid; place-items: center; color: var(--ink-soft, #7a7a83); }
+.empty { font-size: 14px; color: var(--ink-soft, #7a7a83); padding: 12px 0; }
+
+.rows {
+  background: #fff;
+  border: 1px solid var(--border, #e6e6ea);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid #f0f0f3;
+}
+.row:last-child { border-bottom: none; }
+
+.icon {
+  flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: 999px;
+  display: grid; place-items: center;
+  background: #f4f3ef; color: var(--navy, #0B1829);
+}
+.iconFree { background: var(--gold-soft, #f6efdc); color: var(--gold-deep, #9a7b2e); }
+
+.meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rowTitle { font-size: 14px; font-weight: 700; color: var(--navy, #0B1829); }
+.rowSub { font-size: 12.5px; color: var(--ink-soft, #8a8a92); }
+
+.amount { font-size: 14px; font-weight: 700; color: var(--navy, #0B1829); white-space: nowrap; }
+.amountFree { color: var(--gold-deep, #9a7b2e); }
+
+.spin { animation: th-spin 0.9s linear infinite; }
+@keyframes th-spin { to { transform: rotate(360deg); } }
