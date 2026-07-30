@@ -22,7 +22,7 @@ import styles from './App.module.css';
 // Credit purchases are disabled while Razorpay runs on the test account only.
 // Flip to true once the real bank account is integrated — every Buy entry
 // point (topbar pill, avatar menu, footer, buy-credits route) keys off this.
-export const PURCHASES_ENABLED = false;
+export const PURCHASES_ENABLED = true;
 
 // Free marketing tools — no credits used. Reached via compact chip buttons
 // in the topbar (not the main 6-feature grid) so they stay one click away

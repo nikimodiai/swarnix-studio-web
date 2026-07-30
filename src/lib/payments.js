@@ -15,9 +15,9 @@ import { db } from './config';
 
 const CHECKOUT_SRC = 'https://checkout.razorpay.com/v1/checkout.js';
 
-export async function createRazorpayOrder(priceId) {
+export async function createRazorpayOrder(priceId, { gstin, state } = {}) {
   const { data, error } = await db.functions.invoke('create-razorpay-order', {
-    body: { price_id: priceId },
+    body: { price_id: priceId, gstin: gstin || null, state: state || null },
   });
   if (error) throw new Error(error.message ?? 'Could not start checkout');
   if (!data?.order_id) throw new Error(data?.error ?? 'Could not create order');

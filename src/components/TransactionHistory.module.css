@@ -31,9 +31,18 @@
 .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .rowTitle { font-size: 14px; font-weight: 700; color: var(--navy, #0B1829); }
 .rowSub { font-size: 12.5px; color: var(--ink-soft, #8a8a92); }
+.receiptBtn {
+  margin-top: 5px; display: inline-flex; align-items: center; gap: 5px; align-self: flex-start;
+  padding: 4px 9px; border: 1px solid var(--border, #e3e3e8); border-radius: 8px;
+  background: #fff; color: var(--navy, #0B1829); font-size: 11.5px; font-weight: 600; cursor: pointer;
+}
+.receiptBtn:hover:not(:disabled) { border-color: #C9A84C; }
+.receiptBtn:disabled { opacity: 0.6; cursor: default; }
 
+.amountBlock { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
 .amount { font-size: 14px; font-weight: 700; color: var(--navy, #0B1829); white-space: nowrap; }
 .amountFree { color: var(--gold-deep, #9a7b2e); }
+.amountGst { font-size: 11px; color: var(--ink-soft, #9a9aa2); white-space: nowrap; }
 
 .spin { animation: th-spin 0.9s linear infinite; }
 @keyframes th-spin { to { transform: rotate(360deg); } }

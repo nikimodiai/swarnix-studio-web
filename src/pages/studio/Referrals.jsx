@@ -112,6 +112,9 @@ export default function Referrals({ onBack }) {
               <div className={styles.rowRight}>
                 <span className={`${styles.status} ${styles[r.status]}`}>{STATUS_LABEL[r.status] || r.status}</span>
                 {r.status === 'rewarded' && <span className={styles.rowCredits}>+{r.creditsAwarded} credits</span>}
+                {r.status === 'rewarded' && r.rewardedAt && (
+                  <span className={styles.rowCreditedDate}>Credited {formatDate(r.rewardedAt)}</span>
+                )}
               </div>
             </div>
           ))}

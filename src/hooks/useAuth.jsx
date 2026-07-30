@@ -57,24 +57,37 @@ const PENDING_REF_KEY = 'swarnix-pending-referral-code';
   }
 })();
 
-// Records a pending referral code exactly once per browser via a
-// localStorage guard so re-loading the app doesn't re-attempt
-// app_record_referral every render.
+// Records a pending referral code. MUST be called only AFTER the user's
+// app_profiles row exists (loadProfile upsert), because app_record_referral
+// snapshots the profile and the app_referrals.referred_id FK points at it —
+// calling too early returns 'no_profile' and records nothing.
+//
+// We latch a localStorage guard so we don't re-attempt on every render, but
+// ONLY on a terminal outcome. A transient failure (no_profile yet, or a thrown
+// network error) leaves the guard unset so the next auth event / reload retries
+// — otherwise a single early/failed call would lose the referral forever.
 async function maybeRecordReferral() {
   const RECORDED_KEY = 'swarnix-referral-recorded';
   try {
     if (window.localStorage.getItem(RECORDED_KEY)) return;
     const params = new URLSearchParams(window.location.search);
     const code = params.get('ref') || window.localStorage.getItem(PENDING_REF_KEY);
-    if (!code) return;
-    window.localStorage.setItem(RECORDED_KEY, '1');
-    await db.rpc('app_record_referral', {
+    if (!code) return; // nothing to record (don't latch — a code may arrive later)
+
+    const { data: status, error } = await db.rpc('app_record_referral', {
       p_referral_code: code,
       p_fingerprint: getOrCreateDeviceFingerprint(),
     });
+    // Retry later on error or if the profile wasn't ready yet.
+    if (error || status === 'no_profile') return;
+
+    // Terminal outcome (recorded / exists / invalid / no_code) — stop retrying
+    // and clear the stashed code.
+    window.localStorage.setItem(RECORDED_KEY, '1');
     window.localStorage.removeItem(PENDING_REF_KEY);
   } catch {
-    // Best-effort — never block sign-in on this.
+    // Best-effort — never block sign-in, and leave the guard unset so a later
+    // auth event retries.
   }
 }
 
@@ -109,16 +122,18 @@ export function AuthProvider({ children }) {
     db.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session);
-      if (data.session?.user) maybeRecordReferral();
+      // Record the referral only AFTER the profile row is guaranteed to exist.
       loadProfile(data.session?.user ?? null).finally(() => {
+        if (data.session?.user) maybeRecordReferral();
         if (active) setInitializing(false);
       });
     });
 
     const { data: sub } = db.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      loadProfile(s?.user ?? null);
-      if (s?.user) maybeRecordReferral();
+      loadProfile(s?.user ?? null).finally(() => {
+        if (s?.user) maybeRecordReferral();
+      });
     });
     return () => { active = false; sub.subscription.unsubscribe(); };
   }, [loadProfile]);

@@ -44,6 +44,14 @@ export const N8N_RETOUCH = N8N_BASE + '/retouch';
 // render runs in the background and n8n's service role updates the reel_jobs row.
 export const N8N_REEL_GENERATE = N8N_BASE + '/reel-generate';
 
+// Storyboard reels (single photo → AI-written, editable multi-scene script).
+// reel-storyboard: JSON { image_url, length_seconds, ratio } → { scenes[] }
+//   (synchronous — Gemini analyses the photo and writes the script).
+// reel-storyboard-generate: JSON { user_id, image_url, scenes[], … } → { job_id }
+//   (async — same Seedance + render pipeline as reel-generate, one clip per scene).
+export const N8N_REEL_STORYBOARD = N8N_BASE + '/reel-storyboard';
+export const N8N_REEL_STORYBOARD_GENERATE = N8N_BASE + '/reel-storyboard-generate';
+
 export const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,

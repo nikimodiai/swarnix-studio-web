@@ -14,7 +14,10 @@
 // refunds server-side if the row later flips to 'failed'; the ReelStudio screen
 // also refunds the immediate case where submit throws before a row is created.
 
-import { N8N_REEL_GENERATE, db, CLOUDINARY_CLOUD, CLOUDINARY_PRESET } from './config';
+import {
+  N8N_REEL_GENERATE, N8N_REEL_STORYBOARD, N8N_REEL_STORYBOARD_GENERATE,
+  db, CLOUDINARY_CLOUD, CLOUDINARY_PRESET,
+} from './config';
 import { compressImage } from './imageUtils';
 
 export const LENGTH_MIN = 4;
@@ -122,6 +125,101 @@ export async function submitReel({ userId, imageUrls, lengthSeconds, ratio, reso
   let res;
   try {
     res = await fetch(N8N_REEL_GENERATE, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      credentials: 'omit',
+      mode: 'cors',
+    });
+  } catch {
+    throw new Error('Network error — check your connection and try again.');
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || data.error) {
+    throw new Error(data?.message || `Couldn’t start your reel (${res.status}). Please try again.`);
+  }
+  if (typeof data.job_id !== 'string' || !data.job_id) {
+    throw new Error('The reel was submitted but no job id came back. Check your Library in a moment.');
+  }
+  return data.job_id;
+}
+
+// ── Storyboard reels ────────────────────────────────────────────────
+// Step 1: analyse ONE hosted photo and get an editable, multi-scene script.
+// Gemini reads the image server-side and returns premium jewellery scenes. This
+// is synchronous (a few seconds) and does NOT create a job or charge credits.
+export async function analyzeStoryboard({ imageUrl, lengthSeconds, ratio, resolution }) {
+  if (!imageUrl) throw new Error('Add a photo first.');
+  let res;
+  try {
+    res = await fetch(N8N_REEL_STORYBOARD, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_url: imageUrl, length_seconds: lengthSeconds, ratio, resolution }),
+      credentials: 'omit',
+      mode: 'cors',
+    });
+  } catch {
+    throw new Error('Network error — check your connection and try again.');
+  }
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data || data.error || !Array.isArray(data.scenes) || !data.scenes.length) {
+    throw new Error(data?.message || 'Couldn’t write a storyboard for that photo. Try another image.');
+  }
+  return {
+    analysis: data.analysis || '',
+    styleName: data.style_name || '',
+    lengthSeconds: data.length_seconds ?? lengthSeconds,
+    ratio: data.ratio ?? ratio,
+    scenes: data.scenes.map((s, i) => ({
+      order: s.order ?? i,
+      title: s.title || `Scene ${i + 1}`,
+      duration: s.duration ?? null,
+      prompt: s.prompt || '',
+      caption: s.caption || '',
+    })),
+  };
+}
+
+// Step 2: submit the user's EDITED scenes. Renders through the same pipeline as
+// submitReel (Seedance clip per scene, all from the single photo), returns job_id.
+export async function submitStoryboardReel({
+  userId, imageUrl, scenes, lengthSeconds, ratio, resolution, styleName,
+  customPrompt, musicId, musicUrl, overlayText, overlayPosition, overlayFont, overlayColor,
+}) {
+  if (!imageUrl) throw new Error('Add a photo for your reel.');
+  if (!scenes?.length) throw new Error('Write a storyboard first.');
+  const body = {
+    user_id: userId,
+    image_url: imageUrl,
+    image1_url: imageUrl,               // back-compat with the shared plan node
+    length_seconds: lengthSeconds,
+    ratio,
+    resolution,
+    style_name: styleName || null,
+    scenes: scenes.map((s, i) => ({
+      order: s.order ?? i,
+      duration: s.duration ?? null,
+      prompt: (s.prompt || '').trim(),
+      caption: (s.caption || '').trim(),
+    })),
+  };
+  if (customPrompt?.trim()) body.custom_prompt = customPrompt.trim();
+  if (musicUrl) body.music_url = musicUrl;
+  else if (musicId) body.music_id = musicId;
+
+  const overlay = overlayText?.trim();
+  if (overlay) {
+    body.overlay_text = overlay;
+    body.overlay_position = overlayPosition === 'end' ? 'end' : 'whole';
+    if (body.overlay_position === 'end') body.overlay_start_at = lengthSeconds - endOverlayDuration(lengthSeconds);
+    if (overlayFont) body.overlay_font = overlayFont;
+    if (overlayColor) body.overlay_color = overlayColor;
+  }
+
+  let res;
+  try {
+    res = await fetch(N8N_REEL_STORYBOARD_GENERATE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

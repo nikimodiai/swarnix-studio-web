@@ -7,6 +7,35 @@
 
 import { db } from './config';
 
+// ── GST ───────────────────────────────────────────────────────────────
+// All listed pack prices (studio_price.discounted_price) are the pre-tax BASE.
+// We add 18% GST on top at checkout. The server (create-razorpay-order) is the
+// source of truth for the charged amount; these helpers must produce the SAME
+// number the edge function charges, or the displayed total won't match the bill.
+export const GST_RATE = 0.18;
+
+/** GST-inclusive total for a base amount, rounded to whole rupees (₹149 → ₹176). */
+export function withGst(base) {
+  return Math.round(Number(base) * (1 + GST_RATE));
+}
+
+/** Just the GST portion of a base amount, whole rupees (so base + gst === withGst). */
+export function gstAmount(base) {
+  return withGst(base) - Math.round(Number(base));
+}
+
+// Indian states/UTs for the optional "place of supply" field on the GST
+// receipt. Order alphabetical; used to populate the checkout state dropdown.
+export const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa',
+  'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala',
+  'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland',
+  'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
+  'Uttar Pradesh', 'Uttarakhand', 'West Bengal', 'Andaman and Nicobar Islands',
+  'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
+  'Ladakh', 'Lakshadweep', 'Puducherry',
+];
+
 /** Whole-number discount percentage, e.g. 99 → 79 returns 20. */
 export function discountPct(pack) {
   if (!pack.price || pack.discounted_price >= pack.price) return 0;

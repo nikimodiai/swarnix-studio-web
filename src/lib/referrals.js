@@ -46,5 +46,31 @@ export async function fetchMyReferrals() {
   }));
 }
 
+/**
+ * Is the CURRENT user a referred user who hasn't yet earned their referral
+ * bonus? True only while their own referral row is still 'pending' — i.e. they
+ * were invited but haven't completed their first purchase. It flips to
+ * 'rewarded' (or 'blocked') the moment they buy, so this naturally returns
+ * false afterwards. Used to show the "buy a pack to also unlock N bonus
+ * credits" nudge on the Buy Credits screen, and only then.
+ * RLS lets a user read their own referral row via referred_id = auth.uid().
+ */
+export async function hasPendingReferralBonus() {
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) return false;
+  const { data, error } = await db
+    .from('app_referrals')
+    .select('id')
+    .eq('referred_id', user.id)
+    .eq('status', 'pending')
+    .limit(1);
+  if (error) return false;
+  return (data?.length ?? 0) > 0;
+}
+
 export const REFERRAL_REWARD_CREDITS = 10;
 export const REFERRAL_CAP = 10;
+// Minimum first-purchase amount (₹) that unlocks the referral bonus. MUST stay
+// in sync with public.app_referral_min_purchase() in the DB — the server is the
+// source of truth; this is only for display copy on the Buy Credits nudge.
+export const REFERRAL_MIN_PURCHASE_INR = 399;

@@ -18,7 +18,7 @@ const FREE_QUOTA_FALLBACK = 3;
 export async function fetchTransactions() {
   const [txRes, profRes, priceRes] = await Promise.all([
     db.from('app_transactions')
-      .select('id, provider, credits_added, amount, currency, status, created_at')
+      .select('id, provider, credits_added, amount, gst_amount, currency, status, created_at')
       .order('created_at', { ascending: false }),
     db.from('app_profiles').select('created_at').single(),
     db.from('app_pricing').select('free_quota').eq('key', 'default').eq('active', true).maybeSingle(),
@@ -29,19 +29,28 @@ export async function fetchTransactions() {
   const welcomeCredits =
     typeof priceRes.data?.free_quota === 'number' ? priceRes.data.free_quota : FREE_QUOTA_FALLBACK;
 
-  const purchases = (txRes.data ?? []).map((row) => ({
-    id: row.id,
-    title: row.provider === 'referral'
-      ? 'Referral credits added'
-      : `${row.credits_added} credit${row.credits_added === 1 ? '' : 's'}`,
-    credits: row.credits_added ?? 0,
-    amount: row.amount != null ? Number(row.amount) : null,
-    currency: row.currency ?? 'INR',
-    status: row.status ?? 'completed',
-    createdAt: row.created_at,
-    isWelcome: false,
-    isReferral: row.provider === 'referral',
-  }));
+  const purchases = (txRes.data ?? []).map((row) => {
+    // `amount` in the DB is the PRE-GST base. The customer actually paid
+    // base + gst_amount, so history shows that GST-inclusive total. Older rows
+    // (pre-GST) have gst_amount = null → total is just the base.
+    const base = row.amount != null ? Number(row.amount) : null;
+    const gst = row.gst_amount != null ? Number(row.gst_amount) : 0;
+    return {
+      id: row.id,
+      title: row.provider === 'referral'
+        ? 'Referral credits added'
+        : `${row.credits_added} credit${row.credits_added === 1 ? '' : 's'}`,
+      credits: row.credits_added ?? 0,
+      amount: base != null ? base + gst : null, // GST-inclusive total paid
+      baseAmount: base,
+      gstAmount: row.gst_amount != null ? gst : null,
+      currency: row.currency ?? 'INR',
+      status: row.status ?? 'completed',
+      createdAt: row.created_at,
+      isWelcome: false,
+      isReferral: row.provider === 'referral',
+    };
+  });
 
   // Signup welcome bonus — always the oldest row, shown as free.
   if (profRes.data?.created_at) {
@@ -60,6 +69,33 @@ export async function fetchTransactions() {
   // app_transactions is already desc; the welcome bonus (signup) is oldest, so
   // appending keeps the whole list in descending time order.
   return purchases;
+}
+
+/**
+ * Download the GST payment receipt PDF for one completed transaction. Calls the
+ * generate-receipt edge function (which enforces ownership via the user's JWT +
+ * RLS) and saves the returned PDF. Throws on any error so the caller can toast.
+ */
+export async function downloadReceipt(transactionId) {
+  const { data, error } = await db.functions.invoke('generate-receipt', {
+    body: { transaction_id: transactionId },
+  });
+  if (error) {
+    // Edge fn returns JSON { error } on failure; supabase-js surfaces it here.
+    let msg = 'Could not generate the receipt.';
+    try { msg = (await error.context?.json())?.error ?? msg; } catch { /* keep default */ }
+    throw new Error(msg);
+  }
+  // data is a Blob (application/pdf) — save it.
+  const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `receipt-${transactionId}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 /** "1 Jul 2026, 12:31 PM" — date AND time for transaction rows. */

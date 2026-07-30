@@ -15,6 +15,14 @@
   background: #fff4f4; border: 1px solid #f6cccc; padding: 10px 13px; border-radius: 10px;
 }
 
+.referralNudge {
+  display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.5;
+  color: #6b4e12; background: linear-gradient(135deg, #FBF3DA, #F7E9C2);
+  border: 1px solid #E6CF87; padding: 12px 14px; border-radius: 12px;
+}
+.referralNudge svg { flex: none; margin-top: 1px; color: #C9A84C; }
+.referralNudge b { color: #5a3f0a; }
+
 .center { padding: 40px 0; display: grid; place-items: center; color: var(--ink-soft, #7a7a83); }
 
 .list { display: flex; flex-direction: column; gap: 14px; }
@@ -44,6 +52,25 @@
 .discountPill { background: #E7F1EA; color: #166534; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
 .price { font-size: 20px; font-weight: 800; color: var(--navy, #0B1829); }
 .strike { font-size: 12.5px; color: var(--ink-soft, #9a9aa2); text-decoration: line-through; }
+.gstStar { color: var(--ink-soft, #9a9aa2); font-weight: 700; margin-left: 1px; }
+
+.gstBox { border: 1px solid var(--border, #e6e6ea); border-radius: 12px; background: #fff; overflow: hidden; }
+.gstToggle {
+  width: 100%; display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+  background: none; border: none; cursor: pointer; text-align: left;
+  font-size: 13.5px; font-weight: 600; color: var(--navy, #0B1829);
+}
+.gstToggle > span { flex: 1; }
+.gstChevron { transition: transform 0.18s ease; color: var(--ink-soft, #8a8a92); }
+.gstChevronOpen { transform: rotate(180deg); }
+.gstFields { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border, #eee); }
+.gstField { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ink-soft, #66666e); }
+.gstInput {
+  padding: 9px 11px; border: 1px solid var(--border, #e3e3e8); border-radius: 9px;
+  font-size: 14px; color: var(--ink, #222); background: #fff; font-weight: 500;
+}
+.gstInput:focus { outline: none; border-color: #C9A84C; }
+.gstHint { font-size: 11.5px; color: var(--ink-soft, #9a9aa2); margin: 0; line-height: 1.45; }
 
 .payBtn {
   width: 100%; height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 7px;

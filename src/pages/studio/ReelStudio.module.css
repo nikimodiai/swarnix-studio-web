@@ -143,6 +143,56 @@
 }
 .generateBtn:disabled { opacity: .55; cursor: not-allowed; }
 
+/* Mode toggle (Storyboard / Classic) */
+.modeToggle { display: flex; gap: 8px; }
+.modeBtn {
+  flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 12px 14px; border: 1.5px solid var(--border-card); border-radius: var(--r-sm);
+  background: #fff; cursor: pointer; text-align: left; font-family: var(--font-body); color: var(--ink-soft);
+}
+.modeBtn b { font-size: 14.5px; color: var(--navy); }
+.modeBtn small { font-size: 12.5px; color: var(--ink-soft); }
+.modeBtn svg { color: var(--ink-soft); margin-bottom: 2px; }
+.modeActive { border-color: var(--gold); background: rgba(200,149,108,.1); }
+.modeActive svg { color: var(--gold); }
+
+/* Storyboard summary */
+.sbSummary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.sbAnalysis { flex: 1; min-width: 200px; margin: 0; font-size: 14.5px; color: var(--ink); font-style: italic; }
+.sbStyleBadge {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 99px;
+  background: linear-gradient(135deg, #C9A84C, #e8b84b); color: #0B1829; font-size: 12.5px; font-weight: 700;
+}
+
+/* Storyboard form spans wider than the create form so scenes sit 2-up */
+.formWide { max-width: 980px; }
+
+/* Scene cards — 2 per row on wide screens, 1-up on narrow */
+.sceneList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.sceneCard {
+  border: 1.5px solid var(--border-card); border-radius: var(--r-md, 14px); background: #fff; padding: 14px;
+  display: flex; flex-direction: column;
+}
+.sceneHead { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.sceneNum {
+  font-size: 12px; font-weight: 700; color: #0B1829; background: rgba(200,149,108,.18);
+  padding: 3px 9px; border-radius: 99px;
+}
+.sceneTitle { flex: 1; font-size: 14.5px; font-weight: 700; color: var(--navy); }
+.sceneDur { font-size: 12.5px; font-weight: 600; color: var(--gold); }
+
+/* Storyboard actions */
+.sbActions { display: flex; gap: 10px; }
+.sbActions .generateBtn { flex: 1; }
+.secondaryBtn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 13px 16px; border: 1.5px solid var(--border-card); border-radius: var(--r-sm);
+  background: #fff; color: var(--navy); font-size: 14.5px; font-weight: 700;
+  font-family: var(--font-body); cursor: pointer; white-space: nowrap;
+}
+.secondaryBtn:hover { border-color: var(--gold); color: var(--gold); }
+.secondaryBtn:disabled { opacity: .55; cursor: not-allowed; }
+
 /* Result view */
 .linkBtn {
   display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px;
@@ -171,4 +221,7 @@
 
 @media (max-width: 720px) {
   .form { max-width: 100%; }
+  .formWide { max-width: 100%; }
+  .sceneList { grid-template-columns: 1fr; }
+  .modeToggle { flex-direction: column; }
 }

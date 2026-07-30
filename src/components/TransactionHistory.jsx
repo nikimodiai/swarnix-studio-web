@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Gift, CreditCard, Loader2, Receipt } from 'lucide-react';
-import { fetchTransactions, formatDateTime } from '../lib/transactions';
+import { Gift, CreditCard, Loader2, Receipt, Download } from 'lucide-react';
+import { fetchTransactions, formatDateTime, downloadReceipt } from '../lib/transactions';
 import { formatINR } from '../lib/pricing';
+import { useToast } from '../hooks/useToast';
 import styles from './TransactionHistory.module.css';
 
 /**
@@ -12,6 +13,8 @@ import styles from './TransactionHistory.module.css';
  */
 export default function TransactionHistory() {
   const [txns, setTxns] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     let active = true;
@@ -20,6 +23,17 @@ export default function TransactionHistory() {
       .catch(() => active && setTxns([]));
     return () => { active = false; };
   }, []);
+
+  const onDownload = async (id) => {
+    setDownloadingId(id);
+    try {
+      await downloadReceipt(id);
+    } catch (e) {
+      showToast(e.message ?? 'Could not download the receipt.', '#be123c');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <section className={styles.wrap}>
@@ -45,10 +59,27 @@ export default function TransactionHistory() {
                   +{t.credits} credit{t.credits === 1 ? '' : 's'} · {formatDateTime(t.createdAt)}
                   {t.status === 'pending' ? ' · Pending' : ''}
                 </span>
+                {!t.isWelcome && !t.isReferral && t.amount != null && t.status === 'completed' && (
+                  <button
+                    type="button"
+                    className={styles.receiptBtn}
+                    onClick={() => onDownload(t.id)}
+                    disabled={downloadingId === t.id}
+                  >
+                    {downloadingId === t.id
+                      ? <><Loader2 className={styles.spin} size={12} /> Preparing…</>
+                      : <><Download size={12} /> Download receipt</>}
+                  </button>
+                )}
               </div>
-              <span className={`${styles.amount} ${(t.isWelcome || t.isReferral) ? styles.amountFree : ''}`}>
-                {t.isWelcome || t.isReferral || t.amount == null ? 'Free' : formatINR(t.amount, t.currency)}
-              </span>
+              <div className={styles.amountBlock}>
+                <span className={`${styles.amount} ${(t.isWelcome || t.isReferral) ? styles.amountFree : ''}`}>
+                  {t.isWelcome || t.isReferral || t.amount == null ? 'Free' : formatINR(t.amount, t.currency)}
+                </span>
+                {!t.isWelcome && !t.isReferral && t.gstAmount != null && (
+                  <span className={styles.amountGst}>incl. {formatINR(t.gstAmount, t.currency)} GST</span>
+                )}
+              </div>
             </div>
           ))}
         </div>

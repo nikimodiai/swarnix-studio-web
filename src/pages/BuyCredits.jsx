@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, Gem, Check, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Gem, Check, Loader2, AlertCircle, Gift, Building2, ChevronDown } from 'lucide-react';
+import { INDIAN_STATES } from '../lib/pricing';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { fetchCreditPacks, discountPct, formatINR } from '../lib/pricing';
+import { fetchCreditPacks, discountPct, formatINR, GST_RATE } from '../lib/pricing';
 import { createRazorpayOrder, openRazorpayCheckout, verifyRazorpayPayment } from '../lib/payments';
+import { hasPendingReferralBonus, REFERRAL_REWARD_CREDITS, REFERRAL_MIN_PURCHASE_INR } from '../lib/referrals';
 import TransactionHistory from '../components/TransactionHistory';
 import styles from './BuyCredits.module.css';
 
@@ -23,6 +25,14 @@ export default function BuyCredits({ onBack }) {
   const [pendingId, setPendingId] = useState(null);
   const [verifying, setVerifying] = useState(false);
   const [historyKey, setHistoryKey] = useState(0); // bump to re-fetch history after a purchase
+  // Show the referral nudge only to a referred user who hasn't purchased yet
+  // (their referral row is still 'pending'). It disappears after their first
+  // purchase, since completing a purchase flips the row to 'rewarded'.
+  const [showReferralNudge, setShowReferralNudge] = useState(false);
+  // Optional GST details for business buyers who want them on their receipt.
+  const [showGstFields, setShowGstFields] = useState(false);
+  const [gstin, setGstin] = useState('');
+  const [state, setStateName] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -30,6 +40,9 @@ export default function BuyCredits({ onBack }) {
       .then((p) => active && setPacks(p))
       .catch((e) => active && setError(e.message ?? 'Could not load packs'))
       .finally(() => active && setLoading(false));
+    hasPendingReferralBonus()
+      .then((pending) => active && setShowReferralNudge(pending))
+      .catch(() => {});
     return () => { active = false; };
   }, []);
 
@@ -37,13 +50,17 @@ export default function BuyCredits({ onBack }) {
     setPendingId(pack.id);
     setError(null);
     try {
-      const order = await createRazorpayOrder(pack.id);
+      const order = await createRazorpayOrder(pack.id, { gstin: gstin.trim(), state: state.trim() });
       const result = await openRazorpayCheckout(order);
       setVerifying(true);
       try {
         const { success, credits_added } = await verifyRazorpayPayment(result);
         await refreshProfile();
         setHistoryKey((k) => k + 1);
+        // Re-check server truth: a qualifying (≥ threshold) purchase flips the
+        // referral to 'rewarded' and hides the nudge; a sub-threshold Starter
+        // buy leaves it 'pending', so the nudge correctly stays.
+        hasPendingReferralBonus().then(setShowReferralNudge).catch(() => {});
         if (success) {
           showToast(`${credits_added || order.credits} credits added 🎉`, '#166534');
         } else {
@@ -59,7 +76,7 @@ export default function BuyCredits({ onBack }) {
     } finally {
       setPendingId(null);
     }
-  }, [refreshProfile, showToast]);
+  }, [refreshProfile, showToast, gstin, state]);
 
   return (
     <div className={styles.page}>
@@ -75,7 +92,60 @@ export default function BuyCredits({ onBack }) {
         </p>
       </div>
 
+      {showReferralNudge && (
+        <div className={styles.referralNudge}>
+          <Gift size={18} />
+          <span>
+            You were invited through <b>Refer &amp; Earn</b> — buy the <b>Most Popular</b> pack or bigger
+            (₹{REFERRAL_MIN_PURCHASE_INR}+) and you'll get an extra <b>{REFERRAL_REWARD_CREDITS} bonus credits</b> on top,
+            added automatically after that purchase.
+          </span>
+        </div>
+      )}
+
       {error && <div className={styles.errorRow}><AlertCircle size={14} /><span>{error}</span></div>}
+
+      <div className={styles.gstBox}>
+        <button
+          type="button"
+          className={styles.gstToggle}
+          onClick={() => setShowGstFields((v) => !v)}
+          aria-expanded={showGstFields}
+        >
+          <Building2 size={15} />
+          <span>Buying for a business? Add GST details for your receipt</span>
+          <ChevronDown size={15} className={`${styles.gstChevron} ${showGstFields ? styles.gstChevronOpen : ''}`} />
+        </button>
+        {showGstFields && (
+          <div className={styles.gstFields}>
+            <label className={styles.gstField}>
+              <span>GSTIN (optional)</span>
+              <input
+                className={styles.gstInput}
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                placeholder="27AQDPK3941M1ZK"
+                maxLength={15}
+                autoCapitalize="characters"
+              />
+            </label>
+            <label className={styles.gstField}>
+              <span>State (place of supply)</span>
+              <select
+                className={styles.gstInput}
+                value={state}
+                onChange={(e) => setStateName(e.target.value)}
+              >
+                <option value="">Select state…</option>
+                {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <p className={styles.gstHint}>
+              These appear on your downloadable receipt and set the CGST/SGST vs IGST split. Leave blank if not needed.
+            </p>
+          </div>
+        )}
+      </div>
 
       {loading ? (
         <div className={styles.center}><Loader2 className={styles.spin} size={26} /></div>
@@ -100,7 +170,7 @@ export default function BuyCredits({ onBack }) {
                   </div>
                   <div className={styles.priceBlock}>
                     {pct > 0 && <span className={styles.discountPill}>{pct}% OFF</span>}
-                    <span className={styles.price}>{formatINR(pack.discounted_price, pack.currency)}</span>
+                    <span className={styles.price}>{formatINR(pack.discounted_price, pack.currency)}<span className={styles.gstStar}>*</span></span>
                     {pct > 0 && <span className={styles.strike}>{formatINR(pack.price, pack.currency)}</span>}
                   </div>
                 </div>
@@ -118,6 +188,10 @@ export default function BuyCredits({ onBack }) {
         </div>
       )}
 
+      <p className={styles.fineprint}>
+        <b>*</b> Prices shown are exclusive of tax. An additional <b>{Math.round(GST_RATE * 100)}% GST</b> is
+        added at checkout, so the final amount payable is {Math.round((1 + GST_RATE) * 100) - 100}% higher than the listed price.
+      </p>
       <p className={styles.fineprint}>
         Payments are processed securely by Razorpay. Credits never expire.
       </p>
