@@ -33,6 +33,13 @@
   padding: 2px 8px; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff;
   font-size: 11px; font-weight: 700; letter-spacing: .02em;
 }
+/* Marks a thumbnail generated on a free credit. Sits above .kindTag so both
+   can show at once on the same cell. */
+.freeTag {
+  position: absolute; bottom: 6px; right: 6px;
+  padding: 2px 8px; border-radius: 8px; background: rgba(201,168,76,.92); color: #0B1829;
+  font-size: 11px; font-weight: 800; letter-spacing: .02em;
+}
 .playBadge {
   position: absolute; inset: 0; margin: auto; width: 44px; height: 44px; border-radius: 50%;
   background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center;

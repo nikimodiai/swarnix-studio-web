@@ -24,6 +24,18 @@ export function gstAmount(base) {
   return withGst(base) - Math.round(Number(base));
 }
 
+/**
+ * The three numbers a buyer needs to see before checkout, derived the SAME way
+ * the edge function derives them (base → round(base × 1.18) → difference). Use
+ * this everywhere the breakup is displayed so the confirm sheet, the Razorpay
+ * description and the receipt can never disagree by a rupee.
+ */
+export function priceBreakup(base) {
+  const b = Math.round(Number(base));
+  const total = withGst(base);
+  return { base: b, gst: total - b, total };
+}
+
 // Indian states/UTs for the optional "place of supply" field on the GST
 // receipt. Order alphabetical; used to populate the checkout state dropdown.
 export const INDIAN_STATES = [

@@ -82,6 +82,54 @@
 
 .fineprint { font-size: 12.5px; color: var(--ink-soft, #9a9aa2); text-align: center; margin-top: 6px; }
 
+/* The GST-inclusive figure on each pack card — the number the buyer actually
+   pays, so it sits directly under the ex-GST price rather than in fine print. */
+.payable { font-size: 12px; font-weight: 700; color: #166534; margin-top: 2px; }
+
+/* Pre-checkout confirm sheet: last stop before Razorpay, where the tax split is
+   spelled out. Centred on desktop, bottom sheet on phones (see media query). */
+.confirmBackdrop {
+  position: fixed; inset: 0; background: rgba(11,24,41,0.55); z-index: 1100;
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.confirmSheet {
+  background: #fff; border-radius: 16px; padding: 20px; width: 100%; max-width: 380px;
+  display: flex; flex-direction: column; gap: 12px; box-shadow: 0 18px 50px rgba(11,24,41,0.28);
+}
+.confirmTitle { font-size: 17px; font-weight: 800; color: var(--navy, #0B1829); margin: 0; }
+.confirmPack { font-size: 13.5px; color: var(--ink-soft, #66666e); margin: 0; }
+.confirmRows {
+  display: flex; flex-direction: column; gap: 8px;
+  border: 1px solid var(--border, #e6e6ea); border-radius: 12px; padding: 12px;
+}
+.confirmRow {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13.5px; color: var(--ink-soft, #55555c);
+}
+.confirmTotal {
+  border-top: 1px dashed var(--border, #dcdce2); padding-top: 8px; margin-top: 2px;
+  font-size: 16px; font-weight: 800; color: var(--navy, #0B1829);
+}
+.confirmNote { font-size: 12px; color: var(--ink-soft, #9a9aa2); margin: 0; text-align: center; }
+.confirmActions { display: flex; gap: 10px; margin-top: 2px; }
+.confirmCancel {
+  flex: 1; padding: 11px 14px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--border, #e6e6ea); background: #fff;
+  font-size: 14px; font-weight: 700; color: var(--ink-soft, #66666e);
+}
+.confirmPay {
+  flex: 2; padding: 11px 14px; border-radius: 10px; cursor: pointer; border: none;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: linear-gradient(135deg, #C9A84C, #e8b84b); color: #0B1829;
+  font-size: 14px; font-weight: 800;
+}
+.confirmPay:disabled { opacity: 0.55; cursor: not-allowed; }
+
+@media (max-width: 480px) {
+  .confirmBackdrop { align-items: flex-end; padding: 0; }
+  .confirmSheet { max-width: none; border-radius: 16px 16px 0 0; }
+}
+
 .overlay {
   position: fixed; inset: 0; background: rgba(11,24,41,0.55); z-index: 1000;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #fff;

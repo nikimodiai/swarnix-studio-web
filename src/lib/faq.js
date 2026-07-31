@@ -13,11 +13,11 @@ export const FAQ_GROUPS = [
       },
       {
         q: 'How many credits does a reel use?',
-        a: 'It depends on length and resolution — the exact cost is shown before you submit. As a guide, an 8-second reel costs about 3 credits at SD (480p), 6 credits at HD (720p) and 13 credits at Full HD (1080p).',
+        a: 'It depends on length, resolution and mode — the exact cost is always shown before you submit. As a guide, an 8-second Classic reel costs about 3 credits at SD (480p), 6 credits at HD (720p) and 13 credits at Full HD (1080p). Storyboard reels add 1 credit per scene, because each scene is given its own freshly generated opening shot — so the same 8-second reel costs about 5, 8 or 15 credits.',
       },
       {
-        q: 'What do my 3 free sign-up credits get me?',
-        a: 'Enough to try the suite properly: 3 studio images, or one 8-second SD reel. They are yours the moment you sign in with Google — no card, no approval.',
+        q: 'What do my 10 free sign-up credits get me?',
+        a: 'Enough to try the suite properly: 10 studio images, or a couple of 8-second SD reels. They are yours the moment you sign in with Google — no card, no approval. Images made with free credits carry a small "Swarnix Studio" watermark in the corner; buy any credit pack and every image you have already made unlocks clean, including the free ones.',
       },
       {
         q: 'Do credits expire?',
@@ -38,7 +38,7 @@ export const FAQ_GROUPS = [
       },
       {
         q: 'What happens if a reel fails to render?',
-        a: 'Reels reserve their credits when you submit (they render in the background). If the render fails, the reserved credits are automatically refunded to your balance — you never pay for a failed reel.',
+        a: 'You never pay for a failed reel. Storyboard reels are charged only once the reel finishes successfully — nothing is deducted while it renders, so a failed reel is simply never billed. Classic reels set their credits aside when you submit, and if the render fails those credits are automatically returned to your balance.',
       },
       {
         q: 'The result is not what I expected — do I get a refund?',

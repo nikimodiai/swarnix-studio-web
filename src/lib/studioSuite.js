@@ -16,6 +16,7 @@
 // now tamper-resistant because the deduction happens in a SECURITY DEFINER RPC).
 
 import { reserveCredits } from './credits';
+import { hasCleanDownloads } from './watermark';
 
 // The six Studio Suite features and their app_gallery `kind`.
 export const SUITE_FEATURES = {
@@ -58,5 +59,39 @@ export async function chargeSuite(ownerId, units) {
     // A charge failure must not lose the user their generated image — it's
     // already shown/saved. Log-and-continue mirrors the old best-effort update.
     return false;
+  }
+}
+
+/**
+ * Same charge, but reports which grade of credit paid for it so the caller can
+ * watermark free-grade output. Returns { ok, grade }.
+ *
+ * grade is 'free' only if BOTH:
+ *   - the charge came entirely out of the free allowance (a charge that
+ *     straddles the boundary — last free credit + first paid one — counts as
+ *     paid, so we never watermark something the user part-paid for), AND
+ *   - the account has never had paid-grade output before.
+ *
+ * That second condition matters: once someone has bought a pack, watermarking
+ * their leftover free credits reads as a bait-and-switch, not a trial. A
+ * customer who has already paid should never see a watermark again, even on
+ * top-up free credits (a re-grant, a promo, etc). "Watermark = try before you
+ * buy" stops applying the moment they've bought.
+ *
+ * Kept separate from chargeSuite() so the existing callers that don't care
+ * about grade keep working unchanged.
+ */
+export async function chargeSuiteGraded(ownerId, units) {
+  const n = Math.ceil(units || 0);
+  if (n <= 0) return { ok: true, grade: 'paid' };
+  try {
+    const res = await reserveCredits(n);
+    if (!res.ok) return { ok: false, grade: 'paid' };
+    if (res.fromPaid > 0) return { ok: true, grade: 'paid' };
+    // Entirely free-funded — but a returning paying customer never gets watermarked.
+    const alreadyPaying = await hasCleanDownloads().catch(() => false);
+    return { ok: true, grade: alreadyPaying ? 'paid' : 'free' };
+  } catch {
+    return { ok: false, grade: 'paid' };
   }
 }

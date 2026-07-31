@@ -1,0 +1,80 @@
+/* "Link your WhatsApp number" prompt — gold accent (an account/security matter),
+   deliberately distinct from the green WhatsAppNudge card so the two don't read
+   as the same message when both are on screen. */
+
+.card {
+  position: relative;
+  display: flex; align-items: flex-start; gap: 14px;
+  background: linear-gradient(135deg, rgba(201,168,76,.10), rgba(201,168,76,.03));
+  border: 1px solid rgba(201,168,76,.28);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin: 0 0 20px;
+}
+
+.icon {
+  flex: 0 0 auto;
+  display: grid; place-items: center;
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  background: rgba(201,168,76,.16);
+  color: #C9A84C;
+}
+
+.body { flex: 1; min-width: 0; }
+
+.title {
+  margin: 0 0 5px;
+  font-size: 15px; font-weight: 700;
+  color: var(--navy, #0B1829);
+  padding-right: 22px;
+}
+
+.text {
+  margin: 0 0 12px;
+  font-size: 13.2px; line-height: 1.6;
+  color: var(--ink-soft, #4a4a52);
+}
+
+.cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, #C9A84C, #b3923f);
+  border: none;
+  color: #1a1408;
+  font-size: 13.5px; font-weight: 700;
+  padding: 9px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.cta:hover { filter: brightness(1.06); transform: translateY(-1px); }
+
+/* The OTP form is full-width inside the card, capped so it doesn't stretch
+   awkwardly on desktop. */
+.formWrap { max-width: 340px; margin-top: 4px; }
+
+.close {
+  position: absolute; top: 10px; right: 10px;
+  background: none; border: none;
+  color: rgba(11,24,41,.4);
+  cursor: pointer; padding: 4px;
+  line-height: 0;
+  border-radius: 6px;
+  transition: all .2s;
+}
+.close:hover { color: var(--navy, #0B1829); background: rgba(11,24,41,.06); }
+
+/* Success state */
+.doneCard {
+  background: linear-gradient(135deg, rgba(37,211,102,.10), rgba(37,211,102,.03));
+  border-color: rgba(37,211,102,.28);
+}
+.doneIcon { background: rgba(37,211,102,.18); color: #128c4a; }
+
+@media (max-width: 560px) {
+  .card { padding: 14px; gap: 12px; }
+  .icon { width: 34px; height: 34px; }
+  .title { font-size: 14px; }
+  .text { font-size: 12.6px; }
+  .formWrap { max-width: none; }
+}

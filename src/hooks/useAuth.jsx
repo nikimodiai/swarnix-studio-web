@@ -22,7 +22,8 @@ const AuthContext = createContext(null);
 
 const PROFILE_COLUMNS =
   'id, email, full_name, avatar_url, free_tryons_used, paid_credits, plan, ' +
-  'store_name, store_phone, store_logo_url, upi_id, referral_code, created_at';
+  'store_name, store_phone, store_logo_url, upi_id, referral_code, created_at, ' +
+  'phone_verified_at';
 
 // Coarse, non-PII signup fingerprint (persisted in localStorage) used only to
 // flag same-device referral self-abuse — see app_record_referral in the
@@ -91,24 +92,68 @@ async function maybeRecordReferral() {
   }
 }
 
+// Claims the phone-number free-credit grant. MUST run only AFTER the profile
+// row exists (same ordering constraint as maybeRecordReferral — the RPC returns
+// 'no_profile' otherwise).
+//
+// Free credits are per-account, and a burner SIM is cheaper to farm than a
+// burner Gmail, so the grant is ledgered against the NUMBER (app_phone_grants),
+// not the uid. A recycled number returns 'already_used' and the server has
+// already zeroed that account's free allowance.
+//
+// Retry discipline mirrors maybeRecordReferral: latch the guard only on a
+// terminal outcome so a transient failure retries on the next auth event.
+// Returns true when the RPC changed server-side profile state, so the caller
+// knows to re-read the profile it may have already loaded.
+async function maybeClaimPhoneGrant() {
+  const CLAIMED_KEY = 'swarnix-phone-grant-claimed';
+  try {
+    if (window.localStorage.getItem(CLAIMED_KEY)) return false;
+    const { data: status, error } = await db.rpc('app_claim_phone_grant');
+    if (error || status === 'no_profile') return false; // transient — retry later
+
+    // 'granted' | 'already_used' | 'no_phone' are all terminal. 'no_phone' is
+    // the normal case for a Google-only user; latching it is correct because
+    // verifyLinkOtp() clears the guard when a number is actually attached.
+    window.localStorage.setItem(CLAIMED_KEY, '1');
+
+    // Both of these wrote to app_profiles (phone_verified_at/store_phone, and
+    // free_tryons_used on a recycled number), so the caller's copy is stale.
+    return status === 'granted' || status === 'already_used';
+  } catch {
+    // Best-effort — never block sign-in.
+    return false;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [initializing, setInitializing] = useState(true);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [freeQuota, setFreeQuota] = useState(3); // app_pricing.free_quota; refined after load
+  // app_pricing.free_quota is authoritative and read below; this fallback only
+  // covers the brief window before that read resolves.
+  const [freeQuota, setFreeQuota] = useState(10);
 
   // Ensure an app_profiles row exists for this user, then read it back.
+  //
+  // Phone-first signups have NO email and no Google metadata, so every field
+  // here is nullable. We also avoid overwriting an existing full_name/avatar
+  // with nulls when a Google user later signs in by phone — hence the
+  // conditional spread rather than always sending the key.
   const loadProfile = useCallback(async (user) => {
     if (!user) { setProfile(null); return; }
+    const fullName =
+      user.user_metadata?.full_name ?? user.user_metadata?.name ?? null;
+    const avatarUrl = user.user_metadata?.avatar_url ?? null;
+
     const { data, error } = await db
       .from('app_profiles')
       .upsert(
         {
           id: user.id,
-          email: user.email ?? null,
-          full_name:
-            user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
-          avatar_url: user.user_metadata?.avatar_url ?? null,
+          ...(user.email ? { email: user.email } : {}),
+          ...(fullName ? { full_name: fullName } : {}),
+          ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         },
         { onConflict: 'id' }
       )
@@ -122,17 +167,29 @@ export function AuthProvider({ children }) {
     db.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session);
-      // Record the referral only AFTER the profile row is guaranteed to exist.
-      loadProfile(data.session?.user ?? null).finally(() => {
-        if (data.session?.user) maybeRecordReferral();
+      // Both of these depend on the profile row existing, so they run only
+      // AFTER loadProfile resolves. Grant first: it can zero out the free
+      // allowance for a recycled number, and app_record_referral consults the
+      // same ledger, so claiming first keeps the two consistent.
+      loadProfile(data.session?.user ?? null).finally(async () => {
+        if (data.session?.user) {
+          // The grant RPC can mutate the profile we just read, so re-read when
+          // it reports a change — otherwise the first render after linking
+          // shows a stale credit balance / unverified phone.
+          if (await maybeClaimPhoneGrant()) await loadProfile(data.session.user);
+          maybeRecordReferral();
+        }
         if (active) setInitializing(false);
       });
     });
 
     const { data: sub } = db.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      loadProfile(s?.user ?? null).finally(() => {
-        if (s?.user) maybeRecordReferral();
+      loadProfile(s?.user ?? null).finally(async () => {
+        if (s?.user) {
+          if (await maybeClaimPhoneGrant()) await loadProfile(s.user);
+          maybeRecordReferral();
+        }
       });
     });
     return () => { active = false; sub.subscription.unsubscribe(); };
@@ -164,9 +221,66 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }, []);
 
+  // ── WhatsApp OTP ───────────────────────────────────────────────────
+  // Supabase Auth generates and validates the code; our send-whatsapp-otp Auth
+  // Hook delivers it from the Swarnix WABA (+91 7506407254) rather than from a
+  // Twilio number, which is what makes the "message this same number" nudge
+  // coherent.
+  //
+  // IMPORTANT — two different flows, two different verifyOtp types:
+  //   LOGIN : signInWithOtp        → verifyOtp({ type: 'sms' })
+  //   LINK  : updateUser({ phone }) → verifyOtp({ type: 'phone_change' })
+  // Using 'sms' for the link flow is the classic mistake and it fails.
+
+  /** Start a WhatsApp OTP LOGIN. `phone` must already be E.164 (see lib/phone). */
+  const sendLoginOtp = useCallback(async (phone) => {
+    const { error } = await db.auth.signInWithOtp({
+      phone,
+      options: { channel: 'whatsapp' },
+    });
+    if (error) throw error;
+  }, []);
+
+  /** Complete a WhatsApp OTP LOGIN. Resolves to the new session. */
+  const verifyLoginOtp = useCallback(async (phone, token) => {
+    const { data, error } = await db.auth.verifyOtp({ phone, token, type: 'sms' });
+    if (error) throw error;
+    return data;
+  }, []);
+
+  /**
+   * Attach a phone to the CURRENT account (the duplicate-account guard).
+   * Without this, a Google user who later logs in by WhatsApp would get a
+   * second uid — and therefore a second credit balance and gallery.
+   */
+  const sendLinkOtp = useCallback(async (phone) => {
+    const { error } = await db.auth.updateUser({ phone }, { channel: 'whatsapp' });
+    if (error) throw error;
+  }, []);
+
+  /** Confirm the linked phone, then re-claim the grant on the same uid. */
+  const verifyLinkOtp = useCallback(async (phone, token) => {
+    const { data, error } = await db.auth.verifyOtp({
+      phone, token, type: 'phone_change',
+    });
+    if (error) throw error;
+    // A number is now attached, so the earlier 'no_phone' latch is stale —
+    // clear it and re-run so the ledger sees this number.
+    try { window.localStorage.removeItem('swarnix-phone-grant-claimed'); } catch { /* ignore */ }
+    await maybeClaimPhoneGrant();
+    await loadProfile(data?.user ?? session?.user ?? null);
+    return data;
+  }, [loadProfile, session]);
+
   const signOut = useCallback(async () => {
     await db.auth.signOut();
     setProfile(null);
+    // Guards are per-account, not per-browser: leaving them set would make the
+    // next user on this device skip their own grant/referral claim.
+    try {
+      window.localStorage.removeItem('swarnix-phone-grant-claimed');
+      window.localStorage.removeItem('swarnix-referral-recorded');
+    } catch { /* ignore */ }
   }, []);
 
   const refreshProfile = useCallback(
@@ -197,6 +311,11 @@ export function AuthProvider({ children }) {
     };
   }, [session, profile, freeQuota, creditsRemaining]);
 
+  // Has this account got a verified WhatsApp number attached? Drives the
+  // "link your number" prompt. auth.users is authoritative; the profile mirror
+  // is the fallback for when the session object is stale.
+  const hasPhone = Boolean(session?.user?.phone || profile?.phone_verified_at);
+
   const value = useMemo(() => ({
     initializing,
     session,
@@ -205,13 +324,22 @@ export function AuthProvider({ children }) {
     freeQuota,
     creditsRemaining,
     store,
+    hasPhone,
     signInWithGoogle,
+    sendLoginOtp,
+    verifyLoginOtp,
+    sendLinkOtp,
+    verifyLinkOtp,
     signOut,
     refreshProfile,
     // Feature components call refreshStore() after a generation to re-read the
     // balance; alias it to refreshProfile.
     refreshStore: refreshProfile,
-  }), [initializing, session, profile, freeQuota, creditsRemaining, store, signInWithGoogle, signOut, refreshProfile]);
+  }), [
+    initializing, session, profile, freeQuota, creditsRemaining, store, hasPhone,
+    signInWithGoogle, sendLoginOtp, verifyLoginOtp, sendLinkOtp, verifyLinkOtp,
+    signOut, refreshProfile,
+  ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

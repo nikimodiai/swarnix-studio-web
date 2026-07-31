@@ -60,9 +60,16 @@ function pickUrl(data) {
 // Run one retouch/variant generation. Returns the result image URL; throws with
 // a user-facing message on any failure (so the caller shows the error and does
 // NOT charge credits).
-export async function runRetouch({ ownerId, imageUrl, mode, style, targetMetal }) {
+export async function runRetouch({ ownerId, imageUrl, mode, style, targetMetal, modelReferenceUrl }) {
   const body = { owner_id: ownerId, image_url: imageUrl, mode, style };
   if (mode === 'variant' && targetMetal) body.target_metal = targetMetal;
+  // Collection model lock (P1-2): the first generation in a collection becomes
+  // the reference passed to every later piece, which is the only reliable way
+  // to hold a face steady — Gemini has no usable seed for this.
+  // NOTE: the n8n workflow must read `model_reference_url` and feed it to
+  // Gemini as an input image. Until it does, it silently ignores the field and
+  // consistency won't hold. See MODEL_REFERENCE_NOTE in BatchStudio.jsx.
+  if (modelReferenceUrl) body.model_reference_url = modelReferenceUrl;
 
   let res;
   try {

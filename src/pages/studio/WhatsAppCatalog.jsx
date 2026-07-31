@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { BookImage, Plus, X, Share2, Download, Images } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { renderCatalogPages } from '../../lib/catalogCanvas';
-import { buildPdfFromJpegPages } from '../../lib/jpegToPdf';
+import { buildCatalogPdf, hasWatermarkedItems } from '../../lib/catalogPdf';
 import StudioLibraryPicker from '../../components/StudioLibraryPicker';
 import { SuiteFeatureHeader } from '../StudioSuite';
 import hub from '../StudioSuite.module.css';
@@ -26,6 +25,7 @@ export default function WhatsAppCatalog({ onBack }) {
   const [items, setItems] = useState([]); // { url, name, price }
   const [pickerOpen, setPickerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [perPage, setPerPage] = useState(6);   // A4 products per page: 6 or 9
 
   const branding = {
     storeName: profile?.store_name ?? null,
@@ -33,11 +33,17 @@ export default function WhatsAppCatalog({ onBack }) {
     storeLogoUrl: profile?.store_logo_url ?? null,
   };
 
-  const addFromLibrary = (urls) => {
+  const addFromLibrary = (urls, rows = []) => {
     setPickerOpen(false);
     const existing = new Set(items.map((i) => i.url));
     const fresh = urls.filter((u) => !existing.has(u)).slice(0, MAX_ITEMS - items.length);
-    setItems((prev) => [...prev, ...fresh.map((url) => ({ url, name: '', price: '' }))]);
+    const byUrl = new Map(rows.map((r) => [r.image_url, r]));
+    setItems((prev) => [...prev, ...fresh.map((url) => {
+      const row = byUrl.get(url);
+      // Carry the library id + grade so the PDF can swap in the clean image
+      // for anything the account has since unlocked.
+      return { url, name: '', price: '', id: row?.id, credit_grade: row?.credit_grade };
+    })]);
   };
 
   const updateItem = (idx, patch) => {
@@ -45,16 +51,17 @@ export default function WhatsAppCatalog({ onBack }) {
   };
   const removeItem = (idx) => setItems((prev) => prev.filter((_, i) => i !== idx));
 
-  const buildPdf = async () => {
-    const pages = await renderCatalogPages(items, branding);
-    return buildPdfFromJpegPages(pages);
-  };
-
   const buildAndAct = async (action) => {
     if (items.length === 0 || exporting) return;
     setExporting(true);
     try {
-      const pdfBlob = await buildPdf();
+      const { blob: pdfBlob, bytes, overCap } = await buildCatalogPdf(items, branding, { perPage });
+      if (overCap) {
+        showToast(
+          `Catalog is ${(bytes / 1024 / 1024).toFixed(1)} MB — larger than we'd like for WhatsApp. Try fewer items per catalog.`,
+          '#1D4ED8'
+        );
+      }
       const file = new File([pdfBlob], 'catalog.pdf', { type: 'application/pdf' });
 
       if (action === 'share' && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -134,6 +141,31 @@ export default function WhatsAppCatalog({ onBack }) {
           <div className={styles.actions}>
             <span className={styles.freeNote}>Free · doesn't use any credits</span>
           </div>
+
+          <div className={styles.pageOpts}>
+            <span className={styles.pageOptsLabel}>Products per page</span>
+            <div className={styles.segmented}>
+              {[6, 9].map((n) => (
+                <button
+                  key={n}
+                  className={`${styles.segBtn} ${perPage === n ? styles.segBtnOn : ''}`}
+                  onClick={() => setPerPage(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <span className={styles.pageOptsHint}>
+              A4 portrait · {Math.ceil(items.length / perPage)} page{Math.ceil(items.length / perPage) === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          {hasWatermarkedItems(items) && (
+            <p className={styles.wmNote}>
+              Some of these were made with free credits, so they'll carry the Swarnix watermark
+              in the PDF. Buy any credit pack and they'll export clean.
+            </p>
+          )}
           <div className={styles.actions} style={{ marginTop: 10 }}>
             <button className={styles.shareBtn} onClick={() => buildAndAct('share')} disabled={exporting}>
               <Share2 size={16} /> {exporting ? 'Building…' : 'Share catalog'}

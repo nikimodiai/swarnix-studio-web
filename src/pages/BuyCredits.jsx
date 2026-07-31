@@ -3,7 +3,7 @@ import { ArrowLeft, Gem, Check, Loader2, AlertCircle, Gift, Building2, ChevronDo
 import { INDIAN_STATES } from '../lib/pricing';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { fetchCreditPacks, discountPct, formatINR, GST_RATE } from '../lib/pricing';
+import { fetchCreditPacks, discountPct, formatINR, priceBreakup, GST_RATE } from '../lib/pricing';
 import { createRazorpayOrder, openRazorpayCheckout, verifyRazorpayPayment } from '../lib/payments';
 import { hasPendingReferralBonus, REFERRAL_REWARD_CREDITS, REFERRAL_MIN_PURCHASE_INR } from '../lib/referrals';
 import TransactionHistory from '../components/TransactionHistory';
@@ -33,6 +33,10 @@ export default function BuyCredits({ onBack }) {
   const [showGstFields, setShowGstFields] = useState(false);
   const [gstin, setGstin] = useState('');
   const [state, setStateName] = useState('');
+  // Pack awaiting confirmation. Listed prices are ex-GST, so we show the exact
+  // payable total BEFORE handing over to Razorpay — otherwise the buyer meets a
+  // number 18% higher than the card they just tapped.
+  const [confirmPack, setConfirmPack] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -47,6 +51,7 @@ export default function BuyCredits({ onBack }) {
   }, []);
 
   const onPay = useCallback(async (pack) => {
+    setConfirmPack(null);
     setPendingId(pack.id);
     setError(null);
     try {
@@ -172,11 +177,14 @@ export default function BuyCredits({ onBack }) {
                     {pct > 0 && <span className={styles.discountPill}>{pct}% OFF</span>}
                     <span className={styles.price}>{formatINR(pack.discounted_price, pack.currency)}<span className={styles.gstStar}>*</span></span>
                     {pct > 0 && <span className={styles.strike}>{formatINR(pack.price, pack.currency)}</span>}
+                    <span className={styles.payable}>
+                      {formatINR(priceBreakup(pack.discounted_price).total, pack.currency)} payable
+                    </span>
                   </div>
                 </div>
                 <button
                   className={`${styles.payBtn} ${featured ? styles.payBtnFeatured : ''}`}
-                  onClick={() => onPay(pack)}
+                  onClick={() => setConfirmPack(pack)}
                   disabled={pendingId !== null || verifying}
                 >
                   {pendingId === pack.id ? (<><Loader2 className={styles.spin} size={15} /> Starting…</>)
@@ -189,14 +197,62 @@ export default function BuyCredits({ onBack }) {
       )}
 
       <p className={styles.fineprint}>
-        <b>*</b> Prices shown are exclusive of tax. An additional <b>{Math.round(GST_RATE * 100)}% GST</b> is
-        added at checkout, so the final amount payable is {Math.round((1 + GST_RATE) * 100) - 100}% higher than the listed price.
+        <b>*</b> Pack prices are exclusive of tax. <b>{Math.round(GST_RATE * 100)}% GST</b> is added at
+        checkout — the <b>payable</b> figure on each pack is the exact amount you'll pay, and
+        you'll see the full breakup before we hand you over to Razorpay.
       </p>
       <p className={styles.fineprint}>
         Payments are processed securely by Razorpay. Credits never expire.
       </p>
 
       <TransactionHistory key={historyKey} />
+
+      {confirmPack && (() => {
+        const { base, gst, total } = priceBreakup(confirmPack.discounted_price);
+        const cur = confirmPack.currency;
+        return (
+          <div className={styles.confirmBackdrop} onClick={() => setConfirmPack(null)}>
+            <div
+              className={styles.confirmSheet}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Confirm your payment"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className={styles.confirmTitle}>Confirm your payment</h2>
+              <p className={styles.confirmPack}>
+                <b>{confirmPack.credits} credits</b> · {confirmPack.name}
+              </p>
+              <div className={styles.confirmRows}>
+                <div className={styles.confirmRow}>
+                  <span>Pack price</span><span>{formatINR(base, cur)}</span>
+                </div>
+                <div className={styles.confirmRow}>
+                  <span>GST ({Math.round(GST_RATE * 100)}%)</span><span>{formatINR(gst, cur)}</span>
+                </div>
+                <div className={`${styles.confirmRow} ${styles.confirmTotal}`}>
+                  <span>Total payable</span><span>{formatINR(total, cur)}</span>
+                </div>
+              </div>
+              <p className={styles.confirmNote}>
+                Razorpay will ask you to pay exactly {formatINR(total, cur)}.
+              </p>
+              <div className={styles.confirmActions}>
+                <button className={styles.confirmCancel} onClick={() => setConfirmPack(null)}>
+                  Cancel
+                </button>
+                <button
+                  className={styles.confirmPay}
+                  onClick={() => onPay(confirmPack)}
+                  disabled={pendingId !== null || verifying}
+                >
+                  <Check size={15} /> Pay {formatINR(total, cur)}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {verifying && (
         <div className={styles.overlay}>

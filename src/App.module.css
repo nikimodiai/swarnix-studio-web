@@ -7,12 +7,14 @@
 .boot { min-height: 100vh; display: grid; place-items: center; }
 
 .topbar {
-  flex: none;
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  padding: 10px clamp(14px, 4vw, 28px);
+  flex: none; position: relative;
   background: linear-gradient(120deg, var(--navy, #0B1829) 0%, var(--navy-mid, #14263f) 100%);
   border-radius: 0 0 18px 18px;
   box-shadow: 0 8px 24px rgba(11,24,41,.14);
+}
+.topbarMain {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px clamp(14px, 4vw, 28px);
 }
 
 .brand { display: inline-flex; align-items: center; gap: 9px; background: none; border: none; cursor: pointer; padding: 0; flex: none; }
@@ -34,6 +36,12 @@
   display: grid; place-items: center; color: #fff;
 }
 .chipLabel { font-size: 11.5px; font-weight: 700; color: #fff; }
+
+.newBadge {
+  font-size: 9.5px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 999px; color: #1a1206;
+  background: linear-gradient(135deg, #DEB896 0%, #C9A84C 55%, #8B5E3C 100%);
+}
 
 .grad_gold_rate         { background: linear-gradient(135deg, #7A1E1E, #D9B75F); }
 .grad_festival_posters  { background: linear-gradient(135deg, #5A3466, #E9B8D9); }
@@ -59,6 +67,14 @@
   color: #1a1206; font-size: 12px; font-weight: 800;
 }
 .buyBtn:hover { filter: brightness(1.05); }
+
+/* Hamburger — hidden on desktop/tablet where the full chip row already shows
+   every topbar item; revealed at the mobile breakpoint below. */
+.hamburgerBtn {
+  display: none; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 10px; border: none; cursor: pointer;
+  background: rgba(255,255,255,.08); color: #fff;
+}
 
 .profileWrap { position: relative; }
 .avatarBtn { background: none; border: none; cursor: pointer; padding: 0; }
@@ -98,14 +114,34 @@
   .main { overflow-y: visible; }
 }
 
-@media (max-width: 860px) {
-  .topbar { flex-wrap: wrap; }
-  .marketingRow { order: 3; width: 100%; }
+/* Below this width the chip row stops being readable (labels truncate to
+   nothing useful), so it's replaced by the hamburger + drawer instead of
+   shrinking further. */
+@media (max-width: 720px) {
+  .marketingRow { display: none; }
+  .hamburgerBtn { display: flex; }
 }
 
 @media (max-width: 640px) {
   .creditsWord { display: none; }
   .brandName { display: none; }
-  .chipLabel { display: none; }
-  .marketingChip { padding: 6px; }
 }
+
+/* Mobile nav drawer: a real list (icon + full label), not a shrunken chip
+   row — opened by the hamburger, closed by the scrim or picking an item. */
+.mobileNavScrim {
+  position: fixed; inset: 0; z-index: 50; background: rgba(11,24,41,.35);
+}
+.mobileNav {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 51;
+  background: var(--navy, #0B1829); border-radius: 0 0 16px 16px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.3);
+  display: flex; flex-direction: column; padding: 6px; gap: 2px;
+}
+.mobileNavItem {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 14px; border-radius: 10px; border: none; cursor: pointer;
+  background: none; color: #fff; text-align: left;
+}
+.mobileNavItem:active, .mobileNavItemActive { background: rgba(201,168,76,.16); }
+.mobileNavLabel { flex: 1; font-size: 14px; font-weight: 700; }

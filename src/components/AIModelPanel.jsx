@@ -1,36 +1,15 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Sparkles, RefreshCw, PlusCircle, X, AlertCircle, Camera, Maximize2, Share2, Copy, Check, ChevronRight } from 'lucide-react';
-import { N8N_AI_MODEL, db, CLOUDINARY_CLOUD, CLOUDINARY_PRESET, MAX_IMAGE_BYTES } from '../lib/config';
+import { Upload, Sparkles, RefreshCw, PlusCircle, X, AlertCircle, Camera, Maximize2, Share2, Copy, Check } from 'lucide-react';
+import { MAX_IMAGE_BYTES } from '../lib/config';
+import { runAiModel } from '../lib/aiModel';
 import { useAuth } from '../hooks/useAuth';
 import { hasFeature } from '../lib/plans';
-import { canUseSuite, suiteUnitsLeft, chargeSuite } from '../lib/studioSuite';
-import { compressImage, shareImageFile } from '../lib/imageUtils';
+import { canUseSuite, suiteUnitsLeft, chargeSuiteGraded } from '../lib/studioSuite';
+import { saveGenerations } from '../lib/watermark';
+import { logGeneration } from '../lib/analytics';
+import { shareImageFile } from '../lib/imageUtils';
 import StudioLibraryPicker from './StudioLibraryPicker';
 import styles from './AIModelPanel.module.css';
-
-// Map jewelry category → jewelry type label sent to the n8n workflow
-const CATEGORY_TO_JEWELRY_TYPE = {
-  Earring:       'earrings',
-  Necklace:      'necklace',
-  Pendant:       'necklace',
-  Mangalsutra:   'mangalsutra',
-  Chain:         'necklace',
-  Ring:          'ring',
-  Bangle:        'bangles',
-  Bracelet:      'bracelet',
-  Anklet:        'anklet',
-  Nosepin:       'nose_pin',
-  'Maang Tikka': 'maang_tikka',
-  Bajuband:      'armlet',
-  Kamarband:     'waist_chain',
-  'Haath Phool': 'bracelet',
-  Bichhiya:      'anklet',
-  Set:           'necklace',
-};
-
-function jewelryTypeForCategory(category) {
-  return CATEGORY_TO_JEWELRY_TYPE[category] || 'jewellery';
-}
 
 // ── Owner tuning options (chips) ────────────────────────────────────
 const OCCASIONS = [
@@ -111,33 +90,17 @@ const DEFAULT_SEL = {
   occasion: 'festive',
   model_gender: 'female',
   skin_tone: 'auto',
-  framing: 'half_face',
+  framing: 'full_portrait',
   pose: 'auto',
   attire: 'auto',
   attire_color: 'neutral',
   background: 'studio_white',
   brand_color: '#0B1829',
-  aspect: '1:1',
+  aspect: '9:16',
   lighting: 'clean',
   custom_note: '',
   photos: 1,
 };
-
-// Upload generated image blob to Cloudinary and return the secure_url
-async function uploadBlobToCloudinary(blob, filename) {
-  const compressed = await compressImage(blob);
-  const fd = new FormData();
-  fd.append('file', compressed, filename);
-  fd.append('upload_preset', CLOUDINARY_PRESET);
-  fd.append('folder', 'swarnix-ai-models');
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
-    method: 'POST',
-    body: fd,
-  });
-  if (!res.ok) throw new Error('Cloudinary upload failed');
-  const json = await res.json();
-  return json.secure_url;
-}
 
 export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to Images' }) {
   const { store, refreshStore } = useAuth();
@@ -148,11 +111,13 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
   const [srcPreview, setSrcPrev]    = useState(null);
   const [generating, setGenerating] = useState(false);
   const [results, setResults]       = useState([]);     // [{ url, added }]
+  // Grade of the credit that paid for the current results — 'free' means these
+  // are watermarked until the user buys a pack.
+  const [resultGrade, setResultGrade] = useState(null);
   const [error, setError]           = useState(null);
   const [lightboxUrl, setLightbox]  = useState(null);
   const [copied, setCopied]         = useState(false);
   const [shareOpen, setShareOpen]   = useState(false);
-  const [showAdvanced, setAdvanced] = useState(false);
   const [sel, setSel]               = useState(DEFAULT_SEL);
   const [libOpen, setLibOpen]       = useState(false);
 
@@ -222,54 +187,8 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
     }
   };
 
-  // Build the multipart body for one generation request
-  const buildFormData = () => {
-    const fd = new FormData();
-    fd.append('image', srcFile);
-    fd.append('owner_id', store.owner_id);
-    fd.append('jewelry_type', jewelryTypeForCategory(category));
-    fd.append('source', 'web');
-    fd.append('occasion', sel.occasion);
-    fd.append('model_gender', sel.model_gender);
-    fd.append('skin_tone', sel.skin_tone);
-    fd.append('framing', sel.framing);
-    fd.append('pose', sel.pose);
-    fd.append('attire', sel.attire);
-    fd.append('attire_color', sel.attire_color);
-    fd.append('background', sel.background);
-    if (sel.background === 'brand') fd.append('brand_color', sel.brand_color);
-    fd.append('aspect_ratio', sel.aspect);
-    fd.append('lighting', sel.lighting);
-    if (sel.custom_note.trim()) fd.append('custom_note', sel.custom_note.trim().slice(0, 300));
-    return fd;
-  };
-
   // One webhook call → returns a result URL (throws on failure)
-  const generateOne = async () => {
-    const res = await fetch(N8N_AI_MODEL, {
-      method: 'POST',
-      body: buildFormData(),
-      credentials: 'omit',
-      mode: 'cors',
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Generation failed (${res.status})${text ? ': ' + text.slice(0, 120) : ''}`);
-    }
-    const data = await res.json();
-    if (data?.result_url)        return data.result_url;
-    if (data?.secure_url)        return data.secure_url;
-    if (data?.[0]?.result_url)   return data[0].result_url;
-    if (data?.data?.[0]?.b64_json) {
-      const b64 = data.data[0].b64_json;
-      const binary = atob(b64);
-      const arr = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i);
-      const blob = new Blob([arr], { type: 'image/jpeg' });
-      return uploadBlobToCloudinary(blob, `ai_model_${store.owner_id}_${Date.now()}.jpg`);
-    }
-    throw new Error('No image URL in response. Check n8n workflow output.');
-  };
+  const generateOne = () => runAiModel({ ownerId: store.owner_id, source: srcFile, category, sel });
 
   const generate = async () => {
     if (!srcFile || !canUse) return;
@@ -283,6 +202,7 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
     setError(null);
     setResults([]);
     setShareOpen(false);
+    const startedAt = Date.now();
 
     try {
       const settled = await Promise.allSettled(Array.from({ length: n }, () => generateOne()));
@@ -295,21 +215,29 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
 
       setResults(urls.map(url => ({ url, added: false })));
 
-      // Charge the shared Studio Suite meter by the number of photos produced.
-      await chargeSuite(store.owner_id, urls.length);
+      // Charge the shared Studio Suite meter by the number of photos produced,
+      // noting which grade of credit paid for them.
+      const { grade } = await chargeSuiteGraded(store.owner_id, urls.length);
       // Persist each generated image to the shared Studio Suite library
       // (app_gallery, kind='ai_model') so it shows up in Library across the
       // web app and the mobile studio. owner_id === user.id, so user_id maps
       // to the store owner and RLS (auth.uid() = user_id) is satisfied.
+      // Free-grade output is archived clean and shown watermarked.
       try {
-        const rows = urls.map(url => ({
+        const shown = await saveGenerations(urls, grade, {
           user_id: store.owner_id,
-          image_url: url,
           title: 'AI model',
           kind: 'ai_model',
-        }));
-        await db.from('app_gallery').insert(rows);
+        });
+        setResults(shown.map(url => ({ url, added: false })));
       } catch { /* non-fatal: the image is still shown and addable */ }
+      setResultGrade(grade);
+      logGeneration({
+        feature: 'ai_model',
+        creditGrade: grade,
+        creditsConsumed: urls.length,
+        latencyMs: Date.now() - startedAt,
+      });
       await refreshStore();
 
       if (urls.length < n) {
@@ -317,6 +245,7 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
       }
     } catch (err) {
       setError(err.message || 'Generation failed. Please try again.');
+      logGeneration({ feature: 'ai_model', status: 'failed', latencyMs: Date.now() - startedAt });
     } finally {
       setGenerating(false);
     }
@@ -379,29 +308,20 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
     <span className={styles.infoDot} role="button" aria-label="Help" {...tipProps(text)}>i</span>
   );
 
-  // Render a single-select chip group
-  const chipGroup = (key, options) => (
-    <div className={styles.chips}>
-      {options.map(o => {
-        const active = sel[key] === o.v;
-        const onPick = (e) => {
-          setSel(s => ({ ...s, [key]: o.v }));
-          if (isTouch) openTipTimed(e.currentTarget, o.tip);
-        };
-        return (
-          <button
-            key={o.v}
-            type="button"
-            className={`${styles.chip} ${active ? styles.chipActive : ''}`}
-            onClick={onPick}
-            {...(!isTouch ? { onMouseEnter: (e) => openTip(e.currentTarget, o.tip), onMouseLeave: closeTip } : {})}
-          >
-            {o.dot && <span className={styles.dot} style={{ background: o.dot }} />}
-            {o.label}
-          </button>
-        );
-      })}
-    </div>
+// Render a single-select dropdown for one tuning field. Chip buttons looked
+  // fine on a laptop but turned into an unreadable wall on a phone — a native
+  // <select> is compact on every screen size and gets the OS picker for free
+  // on mobile, so this replaces chipGroup() everywhere in this file.
+  const selectField = (key, options) => (
+    <select
+      className={styles.selectInput}
+      value={sel[key]}
+      onChange={(e) => setSel(s => ({ ...s, [key]: e.target.value }))}
+    >
+      {options.map(o => (
+        <option key={o.v} value={o.v}>{o.dot ? '● ' : ''}{o.label}</option>
+      ))}
+    </select>
   );
 
   const groupHead = (label, tipText, hint) => (
@@ -510,39 +430,40 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
               {/* ── Occasion (top) ── */}
               <div className={styles.occasionBox}>
                 {groupHead('Occasion', 'Pick the occasion first. One tap sets a matching outfit, background and mood below — you can still change any of them after.')}
-                {chipGroup('occasion', OCCASIONS)}
+                {selectField('occasion', OCCASIONS)}
               </div>
 
               {/* ── Core controls ── */}
               <div className={styles.group}>
                 {groupHead('Model', 'Who wears the jewellery in the photo.')}
-                {chipGroup('model_gender', MODELS)}
+                {selectField('model_gender', MODELS)}
               </div>
 
               <div className={styles.group}>
                 {groupHead('Skin tone', 'Show your jewellery on the complexion your customers actually have — gold and diamond read very differently on fair vs deep skin.')}
-                {chipGroup('skin_tone', SKIN)}
+                {selectField('skin_tone', SKIN)}
               </div>
 
               <div className={styles.group}>
                 {groupHead('Framing', "How much of the model is in the photo. Tighter crops keep all attention on the jewellery. 'Hands only' / 'Neck only' crop out the face entirely.")}
-                {chipGroup('framing', FRAMING)}
+                {selectField('framing', FRAMING)}
               </div>
 
               <div className={styles.group}>
                 {groupHead('Pose / angle', 'The angle the model faces. Side profile shows off earrings, nose pins and maang tikka best.')}
-                {chipGroup('pose', POSE)}
+                {selectField('pose', POSE)}
               </div>
 
               <div className={styles.group}>
                 {groupHead('Attire', 'The outfit the model wears, and its colour. A neckline and colour that complement your metal make the jewellery pop.')}
-                {chipGroup('attire', ATTIRE)}
-                <div style={{ marginTop: 7 }}>{chipGroup('attire_color', ATTIRE_COLOR)}</div>
+                {selectField('attire', ATTIRE)}
+                <label className={styles.subFieldLabel}>Outfit colour</label>
+                {selectField('attire_color', ATTIRE_COLOR)}
               </div>
 
               <div className={styles.group}>
                 {groupHead('Background', 'The setting behind the model. Plain studio looks are clean for catalogues; lifestyle backdrops tell a story for social media.')}
-                {chipGroup('background', BACKGROUND)}
+                {selectField('background', BACKGROUND)}
                 {sel.background === 'brand' && (
                   <label className={styles.brandColorRow}>
                     <span>Brand colour:</span>
@@ -557,26 +478,18 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
                 )}
               </div>
 
-              {/* ── Advanced ── */}
-              <button
-                type="button"
-                className={`${styles.advToggle} ${showAdvanced ? styles.advOpen : ''}`}
-                onClick={() => setAdvanced(v => !v)}
-              >
-                <ChevronRight size={14} className={styles.caret} /> Advanced options
-              </button>
-              {showAdvanced && (
-                <div className={styles.advBody}>
-                  <div className={styles.group}>
-                    {groupHead('Aspect ratio', "The shape of the final image — match it to where you'll post. Square for the feed, 9:16 for a WhatsApp / Instagram Story.")}
-                    {chipGroup('aspect', ASPECT)}
-                  </div>
-                  <div className={styles.group}>
-                    {groupHead('Lighting / look', 'The overall mood of the photo — from bright catalogue lighting to dramatic editorial shadows.')}
-                    {chipGroup('lighting', LIGHTING)}
-                  </div>
+              {/* ── Advanced options — always visible, not tucked behind a
+                  toggle, since dropdowns take almost no vertical space. ── */}
+              <div className={styles.advBody}>
+                <div className={styles.group}>
+                  {groupHead('Aspect ratio', "The shape of the final image — match it to where you'll post. 9:16 for a WhatsApp / Instagram Story, square for the feed.")}
+                  {selectField('aspect', ASPECT)}
                 </div>
-              )}
+                <div className={styles.group}>
+                  {groupHead('Lighting / look', 'The overall mood of the photo — from bright catalogue lighting to dramatic editorial shadows.')}
+                  {selectField('lighting', LIGHTING)}
+                </div>
+              </div>
 
               {/* ── Custom note ── */}
               <div className={styles.group}>
@@ -628,6 +541,13 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
                           </div>
                         ))}
                   </div>
+                </div>
+              )}
+
+              {resultGrade === 'free' && results.length > 0 && (
+                <div className={styles.freeNote}>
+                  Made with a free credit, so these carry our watermark. Buy any credit pack and
+                  every image you've made so far unlocks clean.
                 </div>
               )}
 

@@ -1,19 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Gem, Sparkles, Camera, Repeat, Film, Images, ArrowLeft, Play,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { suiteUnitsLeft } from '../lib/studioSuite';
+import { WHATSAPP_LOGIN_ENABLED } from '../lib/config';
 import DesignStudio from './DesignStudio';
 import AIModelStudio from './studio/AIModelStudio';
 import StudioPhoto from './studio/StudioPhoto';
 import MetalSwap from './studio/MetalSwap';
 import ReelStudio from './studio/ReelStudio';
 import StudioLibrary from './studio/StudioLibrary';
+import BatchStudio from './studio/BatchStudio';
+import WhatsAppNudge from '../components/WhatsAppNudge';
+import LinkPhoneCard from '../components/LinkPhoneCard';
 import styles from './StudioSuite.module.css';
 
-// The six Studio Suite features. `render` gets an { onBack } prop so each feature
-// can return to the hub. All of them charge the shared credit balance.
+// The six Studio Suite features shown as tiles in the hub grid. `render` gets
+// an { onBack } prop so each feature can return to the hub. All of them charge
+// the shared credit balance.
 //
 // `media`: optional preview shown on the tile — { type: 'image'|'video', src }.
 // Drop a file in /public and point `src` at it (e.g. '/previews/studio-photo.jpg').
@@ -70,6 +75,16 @@ const FEATURES = [
   },
 ];
 
+// Batch Studio is reachable ONLY via the topbar's deep-link (App.jsx's
+// `openFeature`), not as a hub tile — it's kept out of FEATURES so it doesn't
+// render in the grid, but still needs a lookup entry for the deep-link to
+// resolve against.
+const BATCH_FEATURE = {
+  id: 'batch',
+  label: 'Batch Studio',
+  render: (props) => <BatchStudio {...props} />,
+};
+
 function TileMedia({ media, icon: Icon, id }) {
   if (media?.type === 'image') {
     return <img src={media.src} alt="" className={styles.tileMediaImg} />;
@@ -95,19 +110,38 @@ function TileMedia({ media, icon: Icon, id }) {
   );
 }
 
-export default function StudioSuite({ onNavigate }) {
+export default function StudioSuite({ onNavigate, openFeature, onOpenFeatureHandled }) {
   const { store } = useAuth();
   const [active, setActive] = useState(null); // null = hub, else feature id
 
   const left = suiteUnitsLeft(store);
 
+  // Deep-link straight into a feature (e.g. the topbar's Batch Studio button)
+  // without the user having to land on the hub grid first. onOpenFeatureHandled
+  // clears the request in the parent so navigating back to 'studio' later
+  // doesn't re-trigger it.
+  useEffect(() => {
+    if (openFeature) { setActive(openFeature); onOpenFeatureHandled?.(); }
+  }, [openFeature, onOpenFeatureHandled]);
+
   if (active) {
-    const feat = FEATURES.find((f) => f.id === active);
+    const feat = active === BATCH_FEATURE.id
+      ? BATCH_FEATURE
+      : FEATURES.find((f) => f.id === active);
     if (feat) return feat.render({ onBack: () => setActive(null), onNavigate });
   }
 
   return (
     <div className={styles.page}>
+      {/* Hub-only, above the grid. LinkPhoneCard self-hides once a number is
+          linked; WhatsAppNudge self-hides after two dismissals. Link comes
+          first — it's an account-integrity prompt, the nudge is marketing.
+          LinkPhoneCard is gated behind WHATSAPP_LOGIN_ENABLED (the Meta OTP
+          template isn't approved yet); WhatsAppNudge is just a wa.me deep
+          link and doesn't depend on OTP being live, so it stays on. */}
+      {WHATSAPP_LOGIN_ENABLED && <LinkPhoneCard />}
+      <WhatsAppNudge />
+
       <div className={styles.grid}>
         {FEATURES.map((f) => (
           <button key={f.id} className={styles.tile} onClick={() => setActive(f.id)}>

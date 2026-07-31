@@ -113,6 +113,38 @@
 
 .error { color: #f28b8b; font-size: 13px; margin: 12px 0 0; text-align: center; }
 
+/* "or" rule between the Google and WhatsApp options. */
+.divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 0;
+  color: rgba(237,224,208,.35);
+  font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px;
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: rgba(201,168,76,.18);
+}
+
+/* Secondary CTA — deliberately quieter than .googleBtn so Google stays primary. */
+.altBtn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(201,168,76,.28);
+  border-radius: 12px;
+  padding: 13px 24px;
+  font-size: 15px; font-weight: 700;
+  color: #EDE0D0;
+  cursor: pointer;
+  transition: all .22s;
+}
+.altBtn:hover:not(:disabled) {
+  background: rgba(255,255,255,.08);
+  border-color: rgba(201,168,76,.5);
+  transform: translateY(-1px);
+}
+.altBtn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
 .legal { font-size: 11.5px; color: rgba(237,224,208,.4); margin: 18px 0 0; line-height: 1.55; text-align: center; }
 .legal a { color: #C9A84C; text-decoration: none; font-weight: 600; }
 .legal a:hover { text-decoration: underline; }

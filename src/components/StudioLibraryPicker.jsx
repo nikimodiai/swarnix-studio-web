@@ -40,7 +40,7 @@ export default function StudioLibraryPicker({
       try {
         const { data } = await db
           .from('app_gallery')
-          .select('id, image_url, title, kind, created_at')
+          .select('id, image_url, title, kind, created_at, credit_grade')
           .eq('user_id', store.owner_id)
           .order('created_at', { ascending: false });
         if (active) setItems(data || []);
@@ -134,7 +134,10 @@ export default function StudioLibraryPicker({
             <button
               className={styles.useBtn}
               disabled={selected.length === 0}
-              onClick={() => { onPickMany?.(selected); }}
+              // Second arg carries the full rows (id + credit_grade), which the
+              // catalog PDF needs to resolve clean vs watermarked per image.
+              // Existing callers that only read `urls` are unaffected.
+              onClick={() => { onPickMany?.(selected, items.filter((im) => selected.includes(im.image_url))); }}
             >
               Add {selected.length || ''} to {addLabel}
             </button>

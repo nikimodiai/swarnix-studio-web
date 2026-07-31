@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Gem, LogOut, Plus, TrendingUp, PartyPopper, BookImage, Gift, Store, HelpCircle,
+  Gem, LogOut, Plus, TrendingUp, PartyPopper, BookImage, Gift, Store, HelpCircle, BarChart3,
+  Layers, Menu, X,
 } from 'lucide-react';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
@@ -14,6 +15,8 @@ import WhatsAppCatalog from './pages/studio/WhatsAppCatalog';
 import Referrals from './pages/studio/Referrals';
 import StoreBranding from './pages/studio/StoreBranding';
 import Faq from './pages/studio/Faq';
+import Analytics from './pages/studio/Analytics';
+import { isStudioAdmin } from './lib/analytics';
 import Footer from './components/Footer';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
@@ -24,11 +27,34 @@ import styles from './App.module.css';
 // point (topbar pill, avatar menu, footer, buy-credits route) keys off this.
 export const PURCHASES_ENABLED = true;
 
-// Free marketing tools — no credits used. Reached via compact chip buttons
-// in the topbar (not the main 6-feature grid) so they stay one click away
-// without crowding the hub. `render` gets an { onBack } prop, same contract
-// as the Studio Suite features.
-const MARKETING_FEATURES = [
+// Topbar nav: the tools a jeweller reaches for most, one click away without
+// digging into the hub grid. `render` gets an { onBack } prop, same contract
+// as the Studio Suite features. Batch Studio is a hub feature (uses credits),
+// not a standalone marketing page, so its entry deep-links into the hub via
+// `openFeature` instead of rendering its own page — see Shell below.
+const TOPBAR_FEATURES = [
+  {
+    id: 'batch',
+    label: 'Batch Studio',
+    desc: 'Generate up to 10 pieces at once — same settings, same model.',
+    icon: Layers,
+    openFeature: 'batch',
+  },
+  {
+    id: 'whatsapp_catalog',
+    label: 'WhatsApp Catalog',
+    desc: 'Turn your photos into a priced catalog.',
+    icon: BookImage,
+    render: (props) => <WhatsAppCatalog {...props} />,
+  },
+  {
+    id: 'referrals',
+    label: 'Refer & Earn',
+    desc: 'Invite a jeweller — you both get 10 free credits.',
+    icon: Gift,
+    isNew: true,
+    render: (props) => <Referrals {...props} />,
+  },
   {
     id: 'gold_rate',
     label: 'Daily Gold Rate',
@@ -43,20 +69,12 @@ const MARKETING_FEATURES = [
     icon: PartyPopper,
     render: (props) => <FestivalPosters {...props} />,
   },
-  {
-    id: 'whatsapp_catalog',
-    label: 'WhatsApp Catalog',
-    desc: 'Turn your photos into a priced catalog.',
-    icon: BookImage,
-    render: (props) => <WhatsAppCatalog {...props} />,
-  },
-  {
-    id: 'referrals',
-    label: 'Refer & Earn',
-    desc: 'Invite a jeweller — you both get 10 free credits.',
-    icon: Gift,
-    render: (props) => <Referrals {...props} />,
-  },
+];
+
+// Avatar menu: account-level tools. Buy credits comes first (added separately
+// below, ahead of these), then setup/reference items that don't need to live
+// in the primary nav.
+const AVATAR_FEATURES = [
   {
     id: 'store_branding',
     label: 'Store Branding',
@@ -73,99 +91,187 @@ const MARKETING_FEATURES = [
   },
 ];
 
+const ROUTABLE_FEATURES = [...TOPBAR_FEATURES, ...AVATAR_FEATURES];
+
 function Topbar({ route, onNavigate }) {
   const { profile, creditsRemaining, signOut } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  // Analytics is owner-only and lives in the avatar menu rather than the hub —
+  // the rpc enforces this server-side; hiding the link just avoids showing
+  // every jeweller a door they can't open.
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    let active = true;
+    isStudioAdmin().then((ok) => { if (active) setAdmin(ok); });
+    return () => { active = false; };
+  }, []);
+
+  const go = (id) => { onNavigate(id); setMobileNavOpen(false); setMenuOpen(false); };
 
   return (
     <header className={styles.topbar}>
-      <button className={styles.brand} onClick={() => onNavigate('studio')}>
-        <img src="/swarnix-studio-logo.png" alt="Swarnix Studio" className={styles.logoImg} />
-        <span className={styles.brandName}>Swarnix Studio Suite</span>
-      </button>
+      <div className={styles.topbarMain}>
+        <button className={styles.brand} onClick={() => go('studio')}>
+          <img src="/swarnix-studio-logo.png" alt="Swarnix Studio" className={styles.logoImg} />
+          <span className={styles.brandName}>Swarnix Studio Suite</span>
+        </button>
 
-      <div className={styles.marketingRow}>
-        {MARKETING_FEATURES.map((f) => (
+        {/* Desktop / tablet: full chip row. Hidden below the mobile breakpoint
+            in favour of the hamburger drawer (small icon-only chips were
+            unreadable on phones). */}
+        <div className={styles.marketingRow}>
+          {TOPBAR_FEATURES.map((f) => (
+            <button
+              key={f.id}
+              className={`${styles.marketingChip} ${route === f.id ? styles.marketingChipActive : ''}`}
+              onClick={() => go(f.id)}
+              title={f.desc}
+            >
+              <span className={`${styles.chipIcon} ${styles['grad_' + f.id]}`}>
+                <f.icon size={14} strokeWidth={1.8} />
+              </span>
+              <span className={styles.chipLabel}>{f.label}</span>
+              {f.isNew && <span className={styles.newBadge}>New</span>}
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.topbarRight}>
+          <div className={styles.creditsPill} title="Credits are shared across every Studio Suite feature">
+            <Gem size={13} />
+            <b>{creditsRemaining}</b>
+            <span className={styles.creditsWord}>credits</span>
+            {PURCHASES_ENABLED ? (
+              <button className={styles.buyBtn} onClick={() => go('buy-credits')}>
+                <Plus size={12} /> Buy
+              </button>
+            ) : (
+              <button className={styles.buyBtn} disabled style={{ opacity: 0.55, cursor: "default" }} title="Credit packs are coming soon">
+                Coming soon
+              </button>
+            )}
+          </div>
+
+          {/* Mobile: hamburger opens a full nav drawer instead of squeezing
+              every chip down to a bare icon. */}
           <button
-            key={f.id}
-            className={`${styles.marketingChip} ${route === f.id ? styles.marketingChipActive : ''}`}
-            onClick={() => onNavigate(f.id)}
-            title={f.desc}
+            className={styles.hamburgerBtn}
+            onClick={() => setMobileNavOpen((v) => !v)}
+            aria-label="Open menu"
+            aria-expanded={mobileNavOpen}
           >
-            <span className={`${styles.chipIcon} ${styles['grad_' + f.id]}`}>
-              <f.icon size={14} strokeWidth={1.8} />
-            </span>
-            <span className={styles.chipLabel}>{f.label}</span>
+            {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-        ))}
-      </div>
 
-      <div className={styles.topbarRight}>
-        <div className={styles.creditsPill} title="Credits are shared across every Studio Suite feature">
-          <Gem size={13} />
-          <b>{creditsRemaining}</b>
-          <span className={styles.creditsWord}>credits</span>
-          {PURCHASES_ENABLED ? (
-            <button className={styles.buyBtn} onClick={() => onNavigate('buy-credits')}>
-              <Plus size={12} /> Buy
+          <div className={styles.profileWrap}>
+            <button className={styles.avatarBtn} onClick={() => setMenuOpen((v) => !v)}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="" className={styles.avatar} referrerPolicy="no-referrer" />
+                : <span className={styles.avatarFallback}>{(profile?.full_name || profile?.email || '?').slice(0, 1).toUpperCase()}</span>}
             </button>
-          ) : (
-            <button className={styles.buyBtn} disabled style={{ opacity: 0.55, cursor: "default" }} title="Credit packs are coming soon">
-              Coming soon
-            </button>
-          )}
-        </div>
-
-        <div className={styles.profileWrap}>
-          <button className={styles.avatarBtn} onClick={() => setMenuOpen((v) => !v)}>
-            {profile?.avatar_url
-              ? <img src={profile.avatar_url} alt="" className={styles.avatar} referrerPolicy="no-referrer" />
-              : <span className={styles.avatarFallback}>{(profile?.full_name || profile?.email || '?').slice(0, 1).toUpperCase()}</span>}
-          </button>
-          {menuOpen && (
-            <>
-              <div className={styles.menuScrim} onClick={() => setMenuOpen(false)} />
-              <div className={styles.menu}>
-                <div className={styles.menuHead}>
-                  <strong>{profile?.full_name || 'Signed in'}</strong>
-                  <span>{profile?.email}</span>
+            {menuOpen && (
+              <>
+                <div className={styles.menuScrim} onClick={() => setMenuOpen(false)} />
+                <div className={styles.menu}>
+                  <div className={styles.menuHead}>
+                    <strong>{profile?.full_name || 'Signed in'}</strong>
+                    <span>{profile?.email}</span>
+                  </div>
+                  <button className={styles.menuItem} disabled={!PURCHASES_ENABLED} style={PURCHASES_ENABLED ? undefined : { opacity: 0.55, cursor: "default" }} onClick={() => { if (!PURCHASES_ENABLED) return; go('buy-credits'); }}>
+                    <Gem size={15} /> {PURCHASES_ENABLED ? 'Buy credits' : 'Buy credits — coming soon'}
+                  </button>
+                  {AVATAR_FEATURES.map((f) => (
+                    <button key={f.id} className={styles.menuItem} onClick={() => go(f.id)}>
+                      <f.icon size={15} /> {f.label}
+                    </button>
+                  ))}
+                  {admin && (
+                    <button className={styles.menuItem} onClick={() => go('analytics')}>
+                      <BarChart3 size={15} /> Analytics
+                    </button>
+                  )}
+                  <button className={styles.menuItem} onClick={() => { setMenuOpen(false); signOut(); }}>
+                    <LogOut size={15} /> Sign out
+                  </button>
                 </div>
-                <button className={styles.menuItem} disabled={!PURCHASES_ENABLED} style={PURCHASES_ENABLED ? undefined : { opacity: 0.55, cursor: "default" }} onClick={() => { if (!PURCHASES_ENABLED) return; setMenuOpen(false); onNavigate('buy-credits'); }}>
-                  <Gem size={15} /> {PURCHASES_ENABLED ? 'Buy credits' : 'Buy credits — coming soon'}
-                </button>
-                <button className={styles.menuItem} onClick={() => { setMenuOpen(false); signOut(); }}>
-                  <LogOut size={15} /> Sign out
-                </button>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Mobile nav drawer — the same TOPBAR_FEATURES, but as a readable list
+          instead of icon-only chips. */}
+      {mobileNavOpen && (
+        <>
+          <div className={styles.mobileNavScrim} onClick={() => setMobileNavOpen(false)} />
+          <nav className={styles.mobileNav}>
+            {TOPBAR_FEATURES.map((f) => (
+              <button
+                key={f.id}
+                className={`${styles.mobileNavItem} ${route === f.id ? styles.mobileNavItemActive : ''}`}
+                onClick={() => go(f.id)}
+              >
+                <span className={`${styles.chipIcon} ${styles['grad_' + f.id]}`}>
+                  <f.icon size={15} strokeWidth={1.8} />
+                </span>
+                <span className={styles.mobileNavLabel}>{f.label}</span>
+                {f.isNew && <span className={styles.newBadge}>New</span>}
+              </button>
+            ))}
+          </nav>
+        </>
+      )}
     </header>
   );
 }
 
 function Shell({ navigate }) {
   const { initializing, session } = useAuth();
-  const [route, setRoute] = useState('studio'); // 'studio' | 'buy-credits' | marketing feature id
+  const [route, setRoute] = useState('studio'); // 'studio' | 'buy-credits' | a ROUTABLE_FEATURES id
+  // Set when the topbar's Batch Studio button (or anything else with
+  // `openFeature`) is clicked — passed to StudioSuite so it deep-links into
+  // the hub feature instead of showing the tile grid first.
+  const [hubOpenFeature, setHubOpenFeature] = useState(null);
 
   if (initializing) {
     return <div className={styles.boot}><div className="spinner" /></div>;
   }
   if (!session) return <Login navigate={navigate} />;
 
-  const marketingFeature = MARKETING_FEATURES.find((f) => f.id === route);
+  const routedFeature = ROUTABLE_FEATURES.find((f) => f.id === route);
+
+  const onNavigate = (id) => {
+    const feat = ROUTABLE_FEATURES.find((f) => f.id === id);
+    if (feat?.openFeature) {
+      // Hub feature (uses credits) — stay on the 'studio' route and hand the
+      // target straight to StudioSuite rather than rendering a separate page.
+      setHubOpenFeature(feat.openFeature);
+      setRoute('studio');
+      return;
+    }
+    setRoute(id);
+  };
 
   return (
     <div className={styles.app}>
-      <Topbar route={route} onNavigate={setRoute} />
+      <Topbar route={route} onNavigate={onNavigate} />
       <main className={styles.main}>
         <div className={styles.mainInner}>
-          {marketingFeature
-            ? marketingFeature.render({ onBack: () => setRoute('studio'), onNavigate: setRoute })
+          {routedFeature && !routedFeature.openFeature
+            ? routedFeature.render({ onBack: () => setRoute('studio'), onNavigate })
             : route === 'buy-credits' && PURCHASES_ENABLED
               ? <BuyCredits onBack={() => setRoute('studio')} />
-              : <StudioSuite onNavigate={setRoute} />}
+              : route === 'analytics'
+                ? <Analytics onBack={() => setRoute('studio')} />
+                : (
+                  <StudioSuite
+                    onNavigate={onNavigate}
+                    openFeature={hubOpenFeature}
+                    onOpenFeatureHandled={() => setHubOpenFeature(null)}
+                  />
+                )}
         </div>
         <Footer navigate={navigate} onBuyCredits={PURCHASES_ENABLED ? () => setRoute('buy-credits') : null} />
       </main>

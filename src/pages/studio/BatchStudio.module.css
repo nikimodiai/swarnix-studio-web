@@ -1,0 +1,133 @@
+.usage { font-size: 12.5px; font-weight: 700; color: var(--ink-soft, #8a8a92); white-space: nowrap; }
+
+.layout { display: grid; grid-template-columns: 1fr 340px; gap: 18px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+.col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.dropZone {
+  border: 1.5px dashed var(--border, #d8d8de); border-radius: 14px; background: #fff;
+  padding: 28px 18px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  cursor: pointer; text-align: center; color: var(--ink-soft, #66666e);
+}
+.dropZone:hover { border-color: #C9A84C; }
+.dropZone span { font-size: 14px; font-weight: 600; color: var(--navy, #0B1829); }
+.dropZone small { font-size: 12px; color: var(--ink-soft, #9a9aa2); }
+
+/* Piece grid — pre-submit (editable label) and post-submit (live result). Real
+   thumbnails at a usable size instead of a cramped 44px row: this is a photo
+   product, the photo should be the dominant thing on the card. */
+.grid {
+  display: grid; gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+.card {
+  border: 1px solid var(--border, #e6e6ea); border-radius: 12px; background: #fff;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.cardImgWrap { position: relative; aspect-ratio: 1; background: #f3f3f6; }
+.cardImg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cardImgFail { opacity: .4; }
+.cardOverlay {
+  position: absolute; inset: 0; background: rgba(255,255,255,.55);
+  display: flex; align-items: center; justify-content: center; color: #1D4ED8;
+}
+.cardZoom {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 8px;
+  background: rgba(11,24,41,.55); color: #fff; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cardDel {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 8px;
+  background: rgba(11,24,41,.55); color: #fff; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cardBadge {
+  position: absolute; bottom: 6px; left: 6px; display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800;
+  background: rgba(22,101,52,.9); color: #fff;
+}
+.cardBadgeFail { background: rgba(190,18,60,.9); }
+.cardFooter { padding: 8px 9px; display: flex; flex-direction: column; gap: 5px; }
+.cardName {
+  font-size: 12px; font-weight: 700; color: var(--navy, #0B1829);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cardErr { font-size: 11px; color: #be123c; line-height: 1.4; }
+.cardLabel {
+  margin: 0 9px 9px; padding: 7px 9px; border-radius: 8px;
+  border: 1px solid var(--border, #e6e6ea); font-size: 12.5px; font-family: inherit;
+}
+.cardLabel:focus { outline: none; border-color: #C9A84C; }
+.cardActions { display: flex; gap: 6px; }
+.cardActions button {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;
+  padding: 6px; border-radius: 7px; border: 1px solid var(--border, #e6e6ea);
+  background: #fff; color: var(--ink-soft, #66666e); cursor: pointer;
+}
+.cardActions button:disabled { opacity: .5; cursor: not-allowed; }
+
+.progressNote { font-size: 12.5px; font-weight: 700; color: var(--ink-soft, #66666e); margin: 0; }
+
+/* Full-size result viewer */
+.lbOverlay {
+  position: fixed; inset: 0; z-index: 1000; padding: 24px;
+  background: rgba(0,0,0,.82); display: flex; align-items: center; justify-content: center;
+}
+.lbContent { position: relative; max-width: min(90vw, 720px); display: flex; flex-direction: column; gap: 12px; align-items: center; }
+.lbImg { max-width: 100%; max-height: 74vh; border-radius: 12px; object-fit: contain; }
+.lbClose {
+  position: absolute; top: -14px; right: -14px; width: 32px; height: 32px; border-radius: 50%;
+  background: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.lbActions { display: flex; gap: 10px; }
+.lbActions button {
+  display: flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 10px;
+  border: none; cursor: pointer; background: #fff; color: var(--navy, #0B1829); font-weight: 700; font-size: 13px;
+}
+.lbActions button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Shared settings panel */
+.panel {
+  border: 1px solid var(--border, #e6e6ea); border-radius: 14px; background: #fff;
+  padding: 16px; display: flex; flex-direction: column; gap: 13px;
+}
+.field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--ink-soft, #66666e); }
+.field small { font-weight: 500; color: var(--ink-soft, #9a9aa2); }
+.input {
+  padding: 9px 11px; border-radius: 9px; border: 1px solid var(--border, #e6e6ea);
+  font-size: 13.5px; font-family: inherit; background: #fff; color: var(--navy, #0B1829);
+}
+.input:focus { outline: none; border-color: #C9A84C; }
+.input:disabled { background: #f7f7f9; color: var(--ink-soft, #9a9aa2); }
+
+.costBox {
+  border: 1px solid var(--border, #eee); border-radius: 10px; background: #FAFAFB;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 4px;
+}
+.costRow { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--navy, #0B1829); }
+.costHave { font-size: 12px; color: var(--ink-soft, #8a8a92); }
+.buyLink {
+  margin-top: 4px; align-self: flex-start; background: none; border: none; cursor: pointer;
+  padding: 0; font-size: 12.5px; font-weight: 800; color: #be123c; text-decoration: underline;
+}
+
+.errorRow { display: flex; align-items: center; gap: 7px; color: #be123c; font-size: 13px; }
+
+.summary {
+  border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.5;
+  background: #E7F1EA; color: #14532d;
+}
+
+.goBtn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 12px 14px; border-radius: 10px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #C9A84C, #e8b84b); color: #0B1829;
+  font-size: 14px; font-weight: 800;
+}
+.goBtn:disabled { opacity: .55; cursor: not-allowed; }
+
+.runningNote { font-size: 11.5px; color: var(--ink-soft, #9a9aa2); margin: 0; text-align: center; line-height: 1.45; }
+
+.spin { animation: bs-spin .9s linear infinite; }
+@keyframes bs-spin { to { transform: rotate(360deg); } }

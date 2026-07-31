@@ -84,6 +84,12 @@ const sections = [
           more credits to continue generating content.
         </P>
         <P>
+          Images generated using <strong>free</strong> credits are delivered with a visible
+          &ldquo;Swarnix Studio&rdquo; watermark. Once you purchase any credit pack, previously
+          generated free-credit images become available without the watermark. Images generated
+          using purchased or referral credits are never watermarked.
+        </P>
+        <P>
           Credit packs are purchased through Razorpay. Fees are stated exclusive of applicable taxes
           and GST unless stated otherwise. <strong>Credits are non-refundable once used</strong> to
           generate content. Unused purchased credits do not expire unless stated otherwise at the

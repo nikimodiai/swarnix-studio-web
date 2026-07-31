@@ -1,11 +1,13 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Upload, Camera, X, Sparkles, RefreshCw, AlertCircle, Maximize2, Download, Images } from 'lucide-react';
-import { db, MAX_IMAGE_BYTES } from '../../lib/config';
+import { MAX_IMAGE_BYTES } from '../../lib/config';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
-import { canUseSuite, suiteUsageText, chargeSuite } from '../../lib/studioSuite';
+import { canUseSuite, suiteUsageText, chargeSuiteGraded } from '../../lib/studioSuite';
 import { hasFeature } from '../../lib/plans';
 import { uploadRetouchImage, runRetouch } from '../../lib/retouch';
+import { saveGeneration } from '../../lib/watermark';
+import { logGeneration, markDownloaded } from '../../lib/analytics';
 import { SuiteFeatureHeader } from '../StudioSuite';
 import StudioLibraryPicker from '../../components/StudioLibraryPicker';
 import hub from '../StudioSuite.module.css';
@@ -37,6 +39,11 @@ export default function RetouchFeature({
   const [metal, setMetal] = useState(defaultMetal || null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
+  // 'free' once we know this generation was paid for from the free allowance —
+  // its library copy and download are watermarked until the user buys.
+  const [resultGrade, setResultGrade] = useState(null);
+  // Analytics row for the current result, so a download can be attributed to it.
+  const [eventId, setEventId] = useState(null);
   const [error, setError] = useState(null);
   const [lightbox, setLightbox] = useState(false);
   const [libOpen, setLibOpen] = useState(false);
@@ -50,7 +57,7 @@ export default function RetouchFeature({
     if (file.size > MAX_IMAGE_BYTES) { setError(`Image too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max 5 MB.`); return; }
     if (!file.type.startsWith('image/')) { setError('Please select an image file.'); return; }
     setError(null);
-    setResult(null);
+    setResult(null); setResultGrade(null); setEventId(null);
     setSrcUrl(null);
     setSrcFile(file);
     setSrcPreview(URL.createObjectURL(file));
@@ -60,7 +67,7 @@ export default function RetouchFeature({
   // hosted URL, so no upload is needed.
   const pickFromLibrary = (url) => {
     setError(null);
-    setResult(null);
+    setResult(null); setResultGrade(null); setEventId(null);
     setSrcFile(null);
     setSrcUrl(url);
     setSrcPreview(url);
@@ -77,7 +84,7 @@ export default function RetouchFeature({
     setSrcFile(null);
     setSrcUrl(null);
     setSrcPreview(null);
-    setResult(null);
+    setResult(null); setResultGrade(null); setEventId(null);
     setError(null);
     if (fileRef.current) fileRef.current.value = '';
   };
@@ -86,10 +93,12 @@ export default function RetouchFeature({
     if ((!srcFile && !srcUrl) || !canUse || busy) return;
     setBusy(true);
     setError(null);
-    setResult(null);
+    setResult(null); setResultGrade(null); setEventId(null);
+    const startedAt = Date.now();
+    let imageUrl = srcUrl;
     try {
       // Library picks are already hosted; device files need a Cloudinary upload.
-      const imageUrl = srcUrl || await uploadRetouchImage(srcFile, `${kind}_${store.owner_id}_${Date.now()}.jpg`);
+      imageUrl = srcUrl || await uploadRetouchImage(srcFile, `${kind}_${store.owner_id}_${Date.now()}.jpg`);
       const url = await runRetouch({
         ownerId: store.owner_id,
         imageUrl,
@@ -99,21 +108,41 @@ export default function RetouchFeature({
       });
       setResult(url);
 
-      // Charge one Studio credit and save to the shared library.
-      await chargeSuite(store.owner_id, 1);
+      // Charge one Studio credit, then save to the shared library at the grade
+      // the charge actually drew from — free-grade output gets watermarked.
+      const { grade } = await chargeSuiteGraded(store.owner_id, 1);
       const label = mode === 'variant'
         ? (metalOptions?.find((m) => m.v === metal)?.label || metal)
         : (styleOptions?.find((s) => s.v === style)?.label || style);
       try {
-        await db.from('app_gallery').insert({
+        const { displayUrl } = await saveGeneration({
+          url,
+          grade,
           user_id: store.owner_id,
-          image_url: url,
           title: `${title} · ${label}`,
           kind,
         });
+        // Show exactly what was saved, so the preview and the download match.
+        if (displayUrl) setResult(displayUrl);
       } catch { /* non-fatal */ }
+      setResultGrade(grade);
+
+      // Analytics — fire-and-forget, never awaited on the happy path.
+      logGeneration({
+        feature: kind,
+        sourceUrl: imageUrl,
+        creditGrade: grade,
+        creditsConsumed: 1,
+        latencyMs: Date.now() - startedAt,
+      }).then(setEventId);
     } catch (e) {
       setError(e.message || 'Generation failed. Please try again.');
+      logGeneration({
+        feature: kind,
+        status: 'failed',
+        sourceUrl: imageUrl,
+        latencyMs: Date.now() - startedAt,
+      });
     } finally {
       setBusy(false);
     }
@@ -224,12 +253,19 @@ export default function RetouchFeature({
                 <div className={styles.resultWrap}>
                   <img src={result} alt="result" className={styles.resultImg} />
                   <button className={styles.maximizeBtn} onClick={() => setLightbox(true)} title="View full size"><Maximize2 size={13} /></button>
-                  <a className={styles.dlBtn} href={result} target="_blank" rel="noreferrer" download><Download size={13} /> Open</a>
+                  <a className={styles.dlBtn} href={result} target="_blank" rel="noreferrer" download
+                     onClick={() => markDownloaded(eventId)}><Download size={13} /> Open</a>
                 </div>
               ) : (
                 <div className={styles.resultPlaceholder}><Sparkles size={22} strokeWidth={1.4} /><span>Your result appears here</span></div>
               )}
             </div>
+            {resultGrade === 'free' && (
+              <div className={styles.freeNote}>
+                Made with a free credit, so it carries our watermark. Buy any credit pack and
+                every image you've made so far unlocks clean — including this one.
+              </div>
+            )}
             {error && <div className={styles.errorRow}><AlertCircle size={13} /><span>{error}</span></div>}
           </div>
         </div>

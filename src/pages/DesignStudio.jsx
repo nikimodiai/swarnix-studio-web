@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Gem, ArrowLeft, Sparkles, RefreshCw, Upload, X, Maximize2, Download, AlertCircle, Wand2,
 } from 'lucide-react';
-import { db, N8N_DESIGN_GENERATE, CLOUDINARY_CLOUD, CLOUDINARY_PRESET } from '../lib/config';
+import { N8N_DESIGN_GENERATE, CLOUDINARY_CLOUD, CLOUDINARY_PRESET } from '../lib/config';
 import { useAuth } from '../hooks/useAuth';
-import { canUseSuite, suiteUsageText, chargeSuite } from '../lib/studioSuite';
+import { canUseSuite, suiteUsageText, chargeSuiteGraded } from '../lib/studioSuite';
+import { saveGenerations } from '../lib/watermark';
+import { logGeneration } from '../lib/analytics';
 import { compressImage } from '../lib/imageUtils';
 import { composeDesignPrompt } from '../lib/designPrompt';
 import {
@@ -65,6 +67,8 @@ export default function DesignStudio({ onBack }) {
 
   const [generating, setGenerating] = useState(false);
   const [renders, setRenders] = useState([]);
+  // Grade of the credit that paid for the current renders ('free' = watermarked).
+  const [renderGrade, setRenderGrade] = useState(null);
   const [error, setError] = useState(null);
   const [lightbox, setLightbox] = useState(null);
 
@@ -104,6 +108,7 @@ export default function DesignStudio({ onBack }) {
 
     setGenerating(true);
     setError(null);
+    const startedAt = Date.now();
     try {
       const prompt = composeDesignPrompt(params, { mode });
       const fd = new FormData();
@@ -136,17 +141,27 @@ export default function DesignStudio({ onBack }) {
 
       setRenders(urls);
 
-      // Charge one credit per render produced, then auto-save to the Library.
-      await chargeSuite(store.owner_id, urls.length);
+      // Charge one credit per render produced, then auto-save to the Library at
+      // the grade that paid for them — free-grade renders are watermarked.
+      const { grade } = await chargeSuiteGraded(store.owner_id, urls.length);
       const title = [params.style, params.earring_subtype, params.piece_type].filter(Boolean).join(' ') || 'Jewellery Design';
       try {
-        await db.from('app_gallery').insert(
-          urls.map((u) => ({ user_id: store.owner_id, image_url: u, title, kind: 'design' }))
-        );
+        const shown = await saveGenerations(urls, grade, {
+          user_id: store.owner_id, title, kind: 'design',
+        });
+        setRenders(shown);
       } catch { /* non-fatal — the render is still shown */ }
+      setRenderGrade(grade);
+      logGeneration({
+        feature: 'design',
+        creditGrade: grade,
+        creditsConsumed: urls.length,
+        latencyMs: Date.now() - startedAt,
+      });
       await refreshStore();
     } catch (e) {
       setError(e.message || 'Generation failed. Please try again.');
+      logGeneration({ feature: 'design', status: 'failed', latencyMs: Date.now() - startedAt });
     } finally {
       setGenerating(false);
     }
@@ -340,6 +355,12 @@ export default function DesignStudio({ onBack }) {
             <button className={styles.variationBtn} onClick={() => runGenerate(true)} disabled={generating || !canUse}>
               <Sparkles size={13} /> Generate a variation
             </button>
+          )}
+          {renderGrade === 'free' && renders.length > 0 && (
+            <div className={styles.freeNote}>
+              Made with a free credit, so these carry our watermark. Buy any credit pack and
+              every image you've made so far unlocks clean.
+            </div>
           )}
           {error && <div className={styles.errorRow}><AlertCircle size={13} /><span>{error}</span></div>}
         </div>

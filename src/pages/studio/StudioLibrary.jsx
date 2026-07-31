@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { reelPosterUrl } from '../../lib/reels';
 import { nativeShareMedia, shareToWhatsApp, copyLink, downloadMedia } from '../../lib/share';
+import { downloadUrlFor, hasCleanDownloads } from '../../lib/watermark';
 import { SuiteFeatureHeader } from '../StudioSuite';
 import hub from '../StudioSuite.module.css';
 import styles from './StudioLibrary.module.css';
@@ -30,6 +31,9 @@ export default function StudioLibrary({ onBack }) {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState([]);    // [{ url, kind }]
   const [sharing, setSharing] = useState(false);
+  // True once the account has spent a paid credit — every free-grade image is
+  // then downloadable clean, so the "Watermarked" tags come off.
+  const [unlocked, setUnlocked] = useState(false);
 
   const load = useCallback(async () => {
     if (!store?.owner_id) return;
@@ -37,7 +41,7 @@ export default function StudioLibrary({ onBack }) {
     try {
       const [imgRes, reelRes] = await Promise.allSettled([
         db.from('app_gallery')
-          .select('id, image_url, title, kind, created_at')
+          .select('id, image_url, title, kind, created_at, credit_grade')
           .eq('user_id', store.owner_id)
           .order('created_at', { ascending: false }),
         db.from('reel_jobs')
@@ -56,6 +60,12 @@ export default function StudioLibrary({ onBack }) {
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    let active = true;
+    hasCleanDownloads().then((ok) => { if (active) setUnlocked(ok); });
+    return () => { active = false; };
+  }, []);
+
   const deleteImage = async (id) => {
     try {
       await db.from('app_gallery').delete().eq('id', id).eq('user_id', store.owner_id);
@@ -70,19 +80,33 @@ export default function StudioLibrary({ onBack }) {
   const showReels = tab === 'all' || tab === 'reel';
   const filteredImages = tab === 'all' || tab === 'reel' ? images : images.filter((r) => r.kind === tab);
 
+  // ── Clean-download unlock ──
+  // Free-credit output is stored watermarked. Once the account has spent a paid
+  // credit, app_clean_public_id() starts returning the clean image for those
+  // rows — so buying retroactively unlocks everything made on free credits.
+  // We resolve lazily (only when the user actually shares/downloads/copies)
+  // rather than upfront, to avoid an RPC per thumbnail on every library load.
+  const resolveUrl = useCallback(async (url, id) => {
+    if (!id) return url;                        // reels: never watermarked
+    const item = images.find((r) => r.id === id);
+    if (!item || item.credit_grade !== 'free') return url;
+    return (await downloadUrlFor(item)) || url;
+  }, [images]);
+
   // ── Selection + sharing ──
   const isSelected = (url) => selected.some((s) => s.url === url);
-  const toggleSelect = (url) => setSelected((prev) =>
-    prev.some((s) => s.url === url) ? prev.filter((s) => s.url !== url) : [...prev, { url }]);
+  const toggleSelect = (url, id) => setSelected((prev) =>
+    prev.some((s) => s.url === url) ? prev.filter((s) => s.url !== url) : [...prev, { url, id }]);
   const exitSelect = () => { setSelectMode(false); setSelected([]); };
 
   // Share a single item: native sheet (real file on mobile) with graceful
   // fallback to WhatsApp link on desktop.
-  const shareOne = async (url, name) => {
+  const shareOne = async (url, name, id) => {
     setSharing(true);
     try {
-      const res = await nativeShareMedia([{ url, name }], { title: 'Swarnix', text: '' });
-      if (res === 'unsupported') { shareToWhatsApp(url); }
+      const real = await resolveUrl(url, id);
+      const res = await nativeShareMedia([{ url: real, name }], { title: 'Swarnix', text: '' });
+      if (res === 'unsupported') { shareToWhatsApp(real); }
     } finally { setSharing(false); }
   };
 
@@ -90,15 +114,15 @@ export default function StudioLibrary({ onBack }) {
     if (selected.length === 0) return;
     setSharing(true);
     try {
-      const urls = selected.map((s) => s.url);
-      const res = await nativeShareMedia(selected.map((s) => ({ url: s.url })), { title: 'Swarnix' });
+      const urls = await Promise.all(selected.map((s) => resolveUrl(s.url, s.id)));
+      const res = await nativeShareMedia(urls.map((url) => ({ url })), { title: 'Swarnix' });
       if (res === 'unsupported') shareToWhatsApp(urls);   // link fallback
       if (res !== 'cancelled') exitSelect();
     } finally { setSharing(false); }
   };
 
-  const doCopy = async (url) => {
-    const ok = await copyLink(url);
+  const doCopy = async (url, id) => {
+    const ok = await copyLink(await resolveUrl(url, id));
     showToast(ok ? 'Link copied.' : 'Could not copy link.', ok ? '#166534' : '#be123c');
   };
 
@@ -170,10 +194,15 @@ export default function StudioLibrary({ onBack }) {
               <div
                 key={im.id}
                 className={`${styles.cell} ${sel ? styles.cellSel : ''}`}
-                onClick={() => selectMode ? toggleSelect(im.image_url) : setLightbox({ type: 'image', url: im.image_url })}
+                onClick={() => selectMode ? toggleSelect(im.image_url, im.id) : setLightbox({ type: 'image', url: im.image_url, id: im.id })}
               >
                 <img src={im.image_url} alt={im.title || 'image'} className={styles.cellImg} />
                 {im.kind && <span className={styles.kindTag}>{TABS.find((t) => t.id === im.kind)?.label || im.kind}</span>}
+                {im.credit_grade === 'free' && !unlocked && (
+                  <span className={styles.freeTag} title="Made with a free credit — buy any pack to unlock the clean version">
+                    Watermarked
+                  </span>
+                )}
                 {selectMode
                   ? <span className={`${styles.selDot} ${sel ? styles.selDotOn : ''}`}>{sel ? '✓' : ''}</span>
                   : <button className={styles.delBtn} onClick={(e) => { e.stopPropagation(); deleteImage(im.id); }} title="Delete"><Trash2 size={13} /></button>}
@@ -193,17 +222,21 @@ export default function StudioLibrary({ onBack }) {
 
             <div className={styles.lbShare}>
               <button className={styles.lbShareBtn} disabled={sharing}
-                onClick={() => shareOne(lightbox.url, lightbox.type === 'reel' ? 'swarnix-reel.mp4' : 'swarnix.jpg')}>
+                onClick={() => shareOne(lightbox.url, lightbox.type === 'reel' ? 'swarnix-reel.mp4' : 'swarnix.jpg', lightbox.id)}>
                 <Share2 size={16} /> Share
               </button>
-              <button className={`${styles.lbShareBtn} ${styles.waBtn}`} onClick={() => shareToWhatsApp(lightbox.url)}>
+              <button className={`${styles.lbShareBtn} ${styles.waBtn}`}
+                onClick={async () => shareToWhatsApp(await resolveUrl(lightbox.url, lightbox.id))}>
                 <MessageCircle size={16} /> WhatsApp
               </button>
-              <button className={styles.lbShareBtn} onClick={() => doCopy(lightbox.url)}>
+              <button className={styles.lbShareBtn} onClick={() => doCopy(lightbox.url, lightbox.id)}>
                 <Link2 size={16} /> Copy link
               </button>
               <button className={styles.lbShareBtn}
-                onClick={() => downloadMedia(lightbox.url, lightbox.type === 'reel' ? 'swarnix-reel.mp4' : 'swarnix.jpg')}>
+                onClick={async () => downloadMedia(
+                  await resolveUrl(lightbox.url, lightbox.id),
+                  lightbox.type === 'reel' ? 'swarnix-reel.mp4' : 'swarnix.jpg'
+                )}>
                 <Download size={16} /> Download
               </button>
             </div>

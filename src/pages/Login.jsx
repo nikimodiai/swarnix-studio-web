@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Camera, Repeat, Gem, Sparkles, Film } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import PhoneOtpForm from '../components/PhoneOtpForm';
+import { WHATSAPP_LOGIN_ENABLED } from '../lib/config';
 import styles from './Login.module.css';
 
 const PERKS = [
@@ -24,9 +26,12 @@ function GoogleMark() {
 }
 
 export default function Login({ navigate }) {
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, sendLoginOtp, verifyLoginOtp } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  // Google stays the primary CTA; WhatsApp is revealed on demand so the box
+  // doesn't open with two competing calls to action.
+  const [showPhone, setShowPhone] = useState(false);
 
   const goLegal = (to) => (e) => {
     e.preventDefault();
@@ -61,7 +66,7 @@ export default function Login({ navigate }) {
           <p className={styles.sub}>
             Turn plain counter photos into clean studio shots, AI-model campaigns,
             metal swaps, reels and fresh designs. Sign in and start with
-            <b> 3 free credits</b> — no approval, no wait.
+            <b> 10 free credits</b> — no approval, no wait.
           </p>
         </div>
 
@@ -79,6 +84,29 @@ export default function Login({ navigate }) {
         </button>
 
         {error && <p className={styles.error}>{error}</p>}
+
+        {WHATSAPP_LOGIN_ENABLED && (
+          <>
+            <div className={styles.divider}><span>or</span></div>
+
+            {showPhone ? (
+              <PhoneOtpForm
+                onSend={sendLoginOtp}
+                onVerify={verifyLoginOtp}
+                autoFocus
+                submitLabel="Send code on WhatsApp"
+              />
+            ) : (
+              <button
+                className={styles.altBtn}
+                onClick={() => setShowPhone(true)}
+                disabled={busy}
+              >
+                Continue with WhatsApp
+              </button>
+            )}
+          </>
+        )}
 
         <p className={styles.legal}>
           By continuing, you agree to our{' '}

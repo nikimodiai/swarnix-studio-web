@@ -18,6 +18,21 @@ export const SUPABASE_KEY =
 export const CLOUDINARY_CLOUD = env.VITE_CLOUDINARY_CLOUD || 'jewelleryinventory';
 export const CLOUDINARY_PRESET = env.VITE_CLOUDINARY_PRESET || 'jewelleryupload';
 
+// ── Swarnix WhatsApp Business number ────────────────────────────────
+// The SAME number that (a) sends login OTPs via the send-whatsapp-otp Auth Hook
+// and (b) runs the customer-facing AI agent. That overlap is deliberate: a
+// jeweller who just received an OTP from this number can message it back and
+// experience the agent immediately (see components/WhatsAppNudge.jsx).
+export const SWARNIX_WA_NUMBER = env.VITE_SWARNIX_WA_NUMBER || '917506407254';
+
+// WhatsApp OTP login/linking is built (Login.jsx "Continue with WhatsApp" +
+// StudioSuite's LinkPhoneCard) but the Meta AUTHENTICATION template hasn't been
+// created/approved yet, and the Supabase Phone provider + Send-SMS hook aren't
+// enabled (see docs/WHATSAPP_AUTH_DEPLOY.md). Both entry points read this flag
+// so the feature stays hidden until that external setup is done — flip to true
+// once the runbook's Step 4 is complete.
+export const WHATSAPP_LOGIN_ENABLED = false;
+
 // Per-upload size cap for device photos.
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 

@@ -1,0 +1,106 @@
+/* WhatsApp OTP form — matches the Login screen's dark/gold treatment so it can
+   sit inline under the Google button without looking bolted on. */
+
+.wrap { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+
+/* ── Number entry ─────────────────────────────────────────────────── */
+.phoneRow {
+  display: flex; align-items: center;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(201,168,76,.28);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.phoneRow:focus-within { border-color: rgba(201,168,76,.65); }
+
+.cc {
+  padding: 13px 10px 13px 15px;
+  font-size: 15px; font-weight: 700;
+  color: rgba(237,224,208,.65);
+  border-right: 1px solid rgba(201,168,76,.18);
+  user-select: none;
+}
+
+.phoneInput {
+  flex: 1; min-width: 0;
+  background: transparent; border: none; outline: none;
+  padding: 13px 14px;
+  font-size: 15.5px; font-weight: 600; letter-spacing: .4px;
+  color: #EDE0D0;
+}
+.phoneInput::placeholder { color: rgba(237,224,208,.32); font-weight: 500; letter-spacing: 0; }
+.phoneInput:disabled { opacity: .55; }
+
+/* ── WhatsApp CTA ─────────────────────────────────────────────────── */
+.waBtn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #25D366;
+  border: none; border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 15.5px; font-weight: 700;
+  color: #06301a;
+  cursor: pointer;
+  transition: all .22s;
+  box-shadow: 0 2px 16px rgba(37,211,102,.22);
+}
+.waBtn:hover:not(:disabled) {
+  background: #22c35e;
+  box-shadow: 0 6px 26px rgba(37,211,102,.32);
+  transform: translateY(-1px);
+}
+.waBtn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+/* ── Code entry ───────────────────────────────────────────────────── */
+.sentTo {
+  font-size: 13.5px; line-height: 1.6; text-align: center;
+  color: rgba(237,224,208,.7); margin: 0;
+}
+.sentTo b { color: #EDE0D0; }
+
+.codeInput {
+  width: 100%;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(201,168,76,.28);
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 26px; font-weight: 700;
+  letter-spacing: 12px; text-indent: 12px; /* offset the trailing gap */
+  text-align: center;
+  color: #EDE0D0;
+  outline: none;
+  transition: border-color .2s;
+}
+.codeInput:focus { border-color: rgba(201,168,76,.65); }
+.codeInput::placeholder { letter-spacing: 8px; color: rgba(237,224,208,.25); }
+.codeInput:disabled { opacity: .55; }
+
+.primaryBtn {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: linear-gradient(135deg, #C9A84C, #b3923f);
+  border: none; border-radius: 12px;
+  padding: 13px 24px;
+  font-size: 15px; font-weight: 700;
+  color: #1a1408;
+  cursor: pointer;
+  transition: all .22s;
+}
+.primaryBtn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+.primaryBtn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+.back, .resend {
+  background: none; border: none;
+  color: rgba(237,224,208,.6);
+  font-size: 12.5px; font-weight: 600;
+  cursor: pointer; padding: 4px;
+  display: inline-flex; align-items: center; gap: 5px;
+  align-self: center;
+  transition: color .2s;
+}
+.back { align-self: flex-start; }
+.back:hover:not(:disabled), .resend:hover:not(:disabled) { color: #C9A84C; }
+.resend:disabled { opacity: .45; cursor: not-allowed; }
+
+.error { color: #f28b8b; font-size: 13px; margin: 0; text-align: center; line-height: 1.5; }

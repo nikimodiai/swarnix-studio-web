@@ -108,6 +108,14 @@
   color: #be123c; font-size: 14.5px;
 }
 
+/* Shown under a result generated on a free credit — explains the watermark and
+   what removes it. Deliberately informative rather than nagging. */
+.freeNote {
+  margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+  background: #FFF8E6; border: 1px solid #F0DFAE; color: #5a3f0a;
+  font-size: 12.5px; line-height: 1.5;
+}
+
 /* Lightbox */
 .lbOverlay {
   position: fixed; inset: 0; z-index: 1000;

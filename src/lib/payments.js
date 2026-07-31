@@ -71,7 +71,15 @@ export async function openRazorpayCheckout(order) {
       currency: order.currency,
       name: 'Swarnix Studio',
       image: `${window.location.origin}/swarnix-studio-logo.png`,
-      description: `${order.credits} credits · ${order.pack_name}`,
+      // Razorpay's standard checkout renders ONE amount and has no line-item
+      // field, so the tax split can only ride along in `description`. The buyer
+      // has already seen the same split on our confirm sheet — this is the
+      // belt-and-braces copy so the numbers are visible on Razorpay's screen too.
+      // Keep it short: Razorpay truncates a long description.
+      description:
+        order.base_amount != null && order.gst_amount != null
+          ? `${order.credits} credits · ₹${order.base_amount} + ₹${order.gst_amount} GST = ₹${order.total_amount}`
+          : `${order.credits} credits · ${order.pack_name}`,
       prefill: { email: order.user_email ?? '' },
       theme: { color: '#C9A84C' },
       // Explicit method config: UPI first (India's default rail), plus card/
