@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { PartyPopper, Share2, Download, Upload, Camera, Images, X } from 'lucide-react';
+import { PartyPopper, Share2, Download, Upload, Camera, Images, X, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { MAX_IMAGE_BYTES } from '../../lib/config';
@@ -92,6 +92,27 @@ export default function FestivalPosters({ onBack }) {
       } else {
         await downloadMedia(posterUrl, `${themeId}-poster.jpg`);
         showToast('Poster downloaded — share it from your files.', '#1D4ED8');
+      }
+    } catch (e) {
+      if (e?.name !== 'AbortError') showToast('Could not share the poster.', '#be123c');
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  // Poster is a local blob, so a wa.me link can't carry the image. Mobile gets the
+  // real file via the native sheet; elsewhere we download then open WhatsApp.
+  const shareWhatsApp = async () => {
+    if (!posterUrl || sharing) return;
+    setSharing(true);
+    try {
+      const file = new File([posterBlob], `${themeId}-poster.jpg`, { type: 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: theme.label });
+      } else {
+        await downloadMedia(posterUrl, `${themeId}-poster.jpg`);
+        showToast('Poster downloaded — attach it in WhatsApp.', '#1D4ED8');
+        window.open('https://web.whatsapp.com/', '_blank', 'noopener');
       }
     } catch (e) {
       if (e?.name !== 'AbortError') showToast('Could not share the poster.', '#be123c');
@@ -195,6 +216,9 @@ export default function FestivalPosters({ onBack }) {
 
           <button className={styles.shareBtn} onClick={share} disabled={rendering || sharing}>
             <Share2 size={16} /> {sharing ? 'Sharing…' : 'Share poster'}
+          </button>
+          <button className={styles.secondaryBtn} onClick={shareWhatsApp} disabled={rendering || sharing}>
+            <MessageCircle size={15} /> Share to WhatsApp
           </button>
           <button className={styles.secondaryBtn} onClick={download} disabled={rendering}>
             <Download size={15} /> Download

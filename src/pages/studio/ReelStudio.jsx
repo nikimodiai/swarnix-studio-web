@@ -21,6 +21,7 @@ import StudioLibraryPicker from '../../components/StudioLibraryPicker';
 import { deleteTempUpload } from '../../lib/imageUtils';
 import { publicIdFromUrl } from '../../lib/watermark';
 import GuideButton from '../../components/GuideButton';
+import ShareRow from '../../components/ShareRow';
 import InfoDot from '../../components/InfoDot';
 import hub from '../StudioSuite.module.css';
 import styles from './ReelStudio.module.css';
@@ -464,6 +465,7 @@ export default function ReelStudio({ onBack }) {
                 <span className={styles.doneBadge}><CheckCircle2 size={15} /> Ready</span>
                 <a className={styles.dlBtn} href={job.outputUrl} target="_blank" rel="noreferrer">Open / Download</a>
               </div>
+              <ShareRow url={job.outputUrl} name="swarnix-reel.mp4" />
             </>
           ) : job?.status === 'failed' ? (
             <div className={styles.progressBox}>

@@ -1,0 +1,13 @@
+.row {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 15px; border: none; border-radius: 99px;
+  background: rgba(0,0,0,.06); color: #0B1829;
+  font-size: 14.5px; font-weight: 700; font-family: var(--font-body); cursor: pointer;
+}
+.btn:hover { background: rgba(0,0,0,.1); }
+.btn:disabled { opacity: .55; cursor: default; }
+.wa { background: #25D366; color: #fff; }
+.wa:hover { background: #1ebe5b; }

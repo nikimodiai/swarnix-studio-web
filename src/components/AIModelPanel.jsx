@@ -394,6 +394,7 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
               </div>
 
               {/* ── Core controls ── */}
+              <div className={styles.fieldGrid}>
               <div className={styles.group}>
                 {groupHead('Model', 'Who wears the jewellery in the photo.', null, 'फोटो में ज्वेलरी कौन पहनेगा।')}
                 {selectField('model_gender', MODELS)}
@@ -437,10 +438,11 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
                   </label>
                 )}
               </div>
+              </div>
 
               {/* ── Advanced options — always visible, not tucked behind a
                   toggle, since dropdowns take almost no vertical space. ── */}
-              <div className={styles.advBody}>
+              <div className={`${styles.advBody} ${styles.fieldGrid}`}>
                 <div className={styles.group}>
                   {groupHead('Aspect ratio', "The shape of the final image — match it to where you'll post. 9:16 for a WhatsApp / Instagram Story, square for the feed.", null, 'फाइनल फोटो का शेप — जहां पोस्ट करना है उसी के हिसाब से चुनें। WhatsApp / Instagram Story के लिए 9:16, फीड के लिए स्क्वायर।')}
                   {selectField('aspect', ASPECT)}

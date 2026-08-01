@@ -14,6 +14,7 @@ import { deleteTempUpload } from '../../lib/imageUtils';
 import { publicIdFromUrl } from '../../lib/watermark';
 import GuideButton from '../../components/GuideButton';
 import InfoDot from '../../components/InfoDot';
+import ShareRow from '../../components/ShareRow';
 import { saveGeneration } from '../../lib/watermark';
 import { logGeneration, markDownloaded } from '../../lib/analytics';
 import { SuiteFeatureHeader } from '../StudioSuite';
@@ -348,6 +349,9 @@ export default function RetouchFeature({
                 <div className={styles.resultPlaceholder}><Sparkles size={22} strokeWidth={1.4} /><span>Your result appears here</span></div>
               )}
             </div>
+            {result && !busy && (
+              <div style={{ marginTop: 10 }}><ShareRow url={result} name="swarnix.jpg" /></div>
+            )}
             {resultGrade === 'free' && (
               <div className={styles.freeNote}>
                 Made with a free credit, so it carries our watermark. Buy any credit pack and
