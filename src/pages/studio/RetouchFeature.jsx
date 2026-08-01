@@ -5,10 +5,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { canUseSuite, suiteUsageText, chargeSuiteGraded } from '../../lib/studioSuite';
 import { hasFeature } from '../../lib/plans';
-import { uploadRetouchImage, runRetouch, CUSTOM_OPTION } from '../../lib/retouch';
+import {
+  uploadRetouchImage, runRetouch, CUSTOM_OPTION,
+  PIECE_TYPES, DEFAULT_PIECE_TYPE, WORN_PIECE_TYPES,
+  WORN_BACKDROP_COLORS, DEFAULT_WORN_BACKDROP,
+} from '../../lib/retouch';
 import { deleteTempUpload } from '../../lib/imageUtils';
 import { publicIdFromUrl } from '../../lib/watermark';
 import GuideButton from '../../components/GuideButton';
+import InfoDot from '../../components/InfoDot';
 import { saveGeneration } from '../../lib/watermark';
 import { logGeneration, markDownloaded } from '../../lib/analytics';
 import { SuiteFeatureHeader } from '../StudioSuite';
@@ -42,6 +47,11 @@ export default function RetouchFeature({
   const [styleCustom, setStyleCustom] = useState('');
   const [metal, setMetal] = useState(defaultMetal || null);
   const [metalCustom, setMetalCustom] = useState('');
+  const [pieceType, setPieceType] = useState(DEFAULT_PIECE_TYPE);
+  const [worn, setWorn] = useState(false);
+  const [backdropColor, setBackdropColor] = useState(DEFAULT_WORN_BACKDROP);
+  const [backdropColorCustom, setBackdropColorCustom] = useState('');
+  const canWear = WORN_PIECE_TYPES.includes(pieceType);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   // 'free' once we know this generation was paid for from the free allowance —
@@ -92,6 +102,8 @@ export default function RetouchFeature({
     setResult(null); setResultGrade(null); setEventId(null);
     setError(null);
     setStyleCustom(''); setMetalCustom('');
+    setPieceType(DEFAULT_PIECE_TYPE); setWorn(false);
+    setBackdropColor(DEFAULT_WORN_BACKDROP); setBackdropColorCustom('');
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -117,6 +129,10 @@ export default function RetouchFeature({
         styleCustom,
         targetMetal: mode === 'variant' ? metal : undefined,
         targetMetalCustom: metalCustom,
+        pieceType,
+        worn: canWear && worn,
+        backdropColor: canWear && worn ? backdropColor : undefined,
+        backdropColorCustom: canWear && worn ? backdropColorCustom : undefined,
       });
       setResult(url);
 
@@ -237,6 +253,36 @@ export default function RetouchFeature({
 
             {srcPreview && (
               <>
+                <div className={styles.group}>
+                  <span className={styles.groupLabel}>
+                    Piece type
+                    <InfoDot
+                      text="Necklaces and necklace sets can be shown worn on a model against a coloured backdrop."
+                      textHi="नेकलेस और नेकलेस सेट को मॉडल पर पहना हुआ, रंगीन बैकड्रॉप के साथ दिखाया जा सकता है।"
+                    />
+                  </span>
+                  {chipRow(PIECE_TYPES, pieceType, (v) => { setPieceType(v); if (!WORN_PIECE_TYPES.includes(v)) setWorn(false); })}
+                </div>
+
+                {canWear && (
+                  <div className={styles.group}>
+                    <label className={styles.groupLabel} style={{ cursor: 'pointer' }}>
+                      <input type="checkbox" checked={worn} onChange={(e) => setWorn(e.target.checked)} />
+                      {' '}Show worn, on a coloured backdrop
+                    </label>
+                    {worn && (
+                      <>
+                        {chipRow(WORN_BACKDROP_COLORS, backdropColor, setBackdropColor)}
+                        {backdropColor === CUSTOM_OPTION && (
+                          <input className={styles.customInput} maxLength={150}
+                            placeholder="Describe the backdrop colour / fabric you want…"
+                            value={backdropColorCustom} onChange={(e) => setBackdropColorCustom(e.target.value)} />
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {mode === 'variant' && metalOptions && (
                   <div className={styles.group}>
                     <span className={styles.groupLabel}>
@@ -254,21 +300,23 @@ export default function RetouchFeature({
                     )}
                   </div>
                 )}
-                <div className={styles.group}>
-                  <span className={styles.groupLabel}>
-                    {mode === 'variant' ? 'Background' : 'Studio background'}
-                    <InfoDot
-                      text="The backdrop and lighting behind your jewellery in the final photo."
-                      textHi="फाइनल फोटो में आपकी ज्वेलरी के पीछे का बैकड्रॉप और लाइटिंग।"
-                    />
-                  </span>
-                  {chipRow(styleOptions, style, setStyle)}
-                  {style === CUSTOM_OPTION && (
-                    <input className={styles.customInput} maxLength={150}
-                      placeholder="Describe the background you want…"
-                      value={styleCustom} onChange={(e) => setStyleCustom(e.target.value)} />
-                  )}
-                </div>
+                {!(canWear && worn) && (
+                  <div className={styles.group}>
+                    <span className={styles.groupLabel}>
+                      {mode === 'variant' ? 'Background' : 'Studio background'}
+                      <InfoDot
+                        text="The backdrop and lighting behind your jewellery in the final photo."
+                        textHi="फाइनल फोटो में आपकी ज्वेलरी के पीछे का बैकड्रॉप और लाइटिंग।"
+                      />
+                    </span>
+                    {chipRow(styleOptions, style, setStyle)}
+                    {style === CUSTOM_OPTION && (
+                      <input className={styles.customInput} maxLength={150}
+                        placeholder="Describe the background you want…"
+                        value={styleCustom} onChange={(e) => setStyleCustom(e.target.value)} />
+                    )}
+                  </div>
+                )}
 
                 <button className={styles.generateBtn} onClick={generate} disabled={busy || !canUse}>
                   {busy ? (<><div className="spinner spinner-sm" /> Generating…</>)

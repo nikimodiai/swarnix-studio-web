@@ -43,6 +43,33 @@ export const METAL_SWAP_STYLES = [
   ...RETOUCH_STYLES.filter((s) => s.v !== 'ai'),
 ];
 
+// Piece type — lets Studio Photo / Metal Swap offer a "shown worn, on a model,
+// against a coloured backdrop" treatment for necklaces and necklace sets (the
+// jewellery types this actually makes sense for). Flat item is the default and
+// keeps today's behaviour untouched.
+export const PIECE_TYPES = [
+  { v: 'flat', label: 'Flat item', tip: 'Photographed as an object — the usual flat-lay / hero-shot treatment.' },
+  { v: 'necklace', label: 'Necklace', tip: 'A single necklace, shown worn on a neck/mannequin.' },
+  { v: 'necklace_set', label: 'Necklace Set', tip: 'A necklace with matching earrings (and/or other pieces), shown worn as a set.' },
+];
+export const DEFAULT_PIECE_TYPE = 'flat';
+export const WORN_PIECE_TYPES = ['necklace', 'necklace_set'];
+
+// Coloured satin/velvet backdrop options for the "worn" treatment — matches the
+// draped-fabric look (e.g. deep emerald/teal satin) rather than a flat studio
+// background.
+export const WORN_BACKDROP_COLORS = [
+  { v: 'emerald', label: 'Emerald satin', tip: 'Deep emerald-green draped satin.', dot: '#0B3D2E' },
+  { v: 'royal_blue', label: 'Royal blue satin', tip: 'Rich royal-blue draped satin.', dot: '#1B3A6B' },
+  { v: 'maroon', label: 'Maroon velvet', tip: 'Deep maroon draped velvet — classic bridal-catalogue tone.', dot: '#5C1A24' },
+  { v: 'wine', label: 'Wine satin', tip: 'Dark wine-red draped satin.', dot: '#5E1F35' },
+  { v: 'black', label: 'Black satin', tip: 'Glossy black draped satin.', dot: '#111214' },
+  { v: 'ivory', label: 'Ivory silk', tip: 'Soft ivory draped silk — light, bridal.', dot: '#F1E9D8' },
+  { v: 'blush', label: 'Blush pink satin', tip: 'Soft blush-pink draped satin.', dot: '#E7B8B8' },
+  { v: CUSTOM_OPTION, label: 'Custom…', tip: 'Describe the backdrop colour/fabric you want in words.' },
+];
+export const DEFAULT_WORN_BACKDROP = 'emerald';
+
 // Upload a device photo to Cloudinary and return its secure_url. Callers that
 // need to delete this as a temp source once done (see deleteTempUpload in
 // lib/imageUtils.js) can recover its public_id via publicIdFromUrl(url).
@@ -68,12 +95,21 @@ function pickUrl(data) {
 // Run one retouch/variant generation. Returns the result image URL; throws with
 // a user-facing message on any failure (so the caller shows the error and does
 // NOT charge credits).
-export async function runRetouch({ ownerId, imageUrl, mode, style, styleCustom, targetMetal, targetMetalCustom, modelReferenceUrl }) {
+export async function runRetouch({
+  ownerId, imageUrl, mode, style, styleCustom, targetMetal, targetMetalCustom, modelReferenceUrl,
+  pieceType, worn, backdropColor, backdropColorCustom,
+}) {
   const body = { owner_id: ownerId, image_url: imageUrl, mode, style };
   if (style === CUSTOM_OPTION && styleCustom?.trim()) body.style_custom = styleCustom.trim();
   if (mode === 'variant' && targetMetal) {
     body.target_metal = targetMetal;
     if (targetMetal === CUSTOM_OPTION && targetMetalCustom?.trim()) body.target_metal_custom = targetMetalCustom.trim();
+  }
+  if (pieceType && pieceType !== 'flat') body.piece_type = pieceType;
+  if (worn) {
+    body.worn = true;
+    body.backdrop_color = backdropColor;
+    if (backdropColor === CUSTOM_OPTION && backdropColorCustom?.trim()) body.backdrop_color_custom = backdropColorCustom.trim();
   }
   // Collection model lock (P1-2): the first generation in a collection becomes
   // the reference passed to every later piece, which is the only reliable way
