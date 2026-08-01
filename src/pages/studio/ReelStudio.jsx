@@ -12,10 +12,16 @@ import {
   endOverlayDuration, uploadReelImage, submitReel, fetchReel, subscribeToReel, reelPosterUrl,
   fetchReelMusic, uploadReelMusic, MAX_MUSIC_BYTES,
   OVERLAY_FONTS, DEFAULT_OVERLAY_FONT, OVERLAY_COLORS, DEFAULT_OVERLAY_COLOR,
+  BACKGROUNDS, BACKGROUND_CUSTOM, DEFAULT_BACKGROUND, backgroundPromptPhrase,
+  GOOGLE_FONTS_HREF,
   analyzeStoryboard, submitStoryboardReel,
 } from '../../lib/reels';
 import { SuiteFeatureHeader } from '../StudioSuite';
 import StudioLibraryPicker from '../../components/StudioLibraryPicker';
+import { deleteTempUpload } from '../../lib/imageUtils';
+import { publicIdFromUrl } from '../../lib/watermark';
+import GuideButton from '../../components/GuideButton';
+import InfoDot from '../../components/InfoDot';
 import hub from '../StudioSuite.module.css';
 import styles from './ReelStudio.module.css';
 
@@ -48,6 +54,16 @@ export default function ReelStudio({ onBack }) {
   const [overlayFont, setOverlayFont] = useState(DEFAULT_OVERLAY_FONT);
   const [overlayColor, setOverlayColor] = useState(DEFAULT_OVERLAY_COLOR);
   const [customPrompt, setCustomPrompt] = useState('');
+  const [background, setBackground] = useState(DEFAULT_BACKGROUND);
+  const [backgroundCustom, setBackgroundCustom] = useState('');
+  // The reel pipeline has no dedicated background field — fold the chosen
+  // backdrop into the free-text prompt actually sent to n8n.
+  const effectivePrompt = useMemo(() => {
+    const bg = backgroundPromptPhrase(background, backgroundCustom);
+    const note = customPrompt.trim();
+    if (bg && note) return `${bg}. ${note}`;
+    return bg || note;
+  }, [background, backgroundCustom, customPrompt]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -88,6 +104,17 @@ export default function ReelStudio({ onBack }) {
     let active = true;
     fetchReelMusic().then((t) => active && setTracks(t));
     return () => { active = false; };
+  }, []);
+
+  // Load the overlay font previews once — the actual render still happens
+  // server-side (ffmpeg reads `overlay_font` by name), this just makes the
+  // font picker and live preview show the real typeface in the browser.
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = GOOGLE_FONTS_HREF;
+    document.head.appendChild(link);
+    return () => document.head.removeChild(link);
   }, []);
 
   // Stop any preview when leaving the create view or unmounting.
@@ -154,13 +181,24 @@ export default function ReelStudio({ onBack }) {
   });
   useEffect(() => () => { images.forEach((im) => im.file && im.preview && URL.revokeObjectURL(im.preview)); }, []); // eslint-disable-line
 
+  // public_ids of any device/camera photos uploaded as temp sources for the
+  // reel currently rendering. Reels render asynchronously, so — unlike the
+  // still-image features — these can't be deleted right after submit; the
+  // render needs them until it finishes. Deleted once the job settles below.
+  // Never populated for Library-sourced images (those are permanent).
+  const tempSourceIdsRef = useRef([]);
+
   // Reels are billed by RESERVE-ON-SUBMIT (see below). n8n's server-side trigger
   // refunds a failed reel, so here we only track status for the UI.
   const onJobChange = useCallback(async (next) => {
     setJob(next);
     // Storyboard reels are charged on completion (and classic reels are refunded
     // on failure) server-side — refresh either way so the header balance is live.
-    if (next.status === 'completed' || next.status === 'failed') await refreshStore();
+    if (next.status === 'completed' || next.status === 'failed') {
+      await refreshStore();
+      tempSourceIdsRef.current.forEach(deleteTempUpload);
+      tempSourceIdsRef.current = [];
+    }
   }, [refreshStore]);
 
   const generate = async () => {
@@ -190,10 +228,15 @@ export default function ReelStudio({ onBack }) {
 
     try {
       // Resolve every image to a public URL in scene order. Library picks are
-      // already hosted; device files are uploaded to Cloudinary.
+      // already hosted; device files are uploaded to Cloudinary as TEMP
+      // sources, tracked so they can be deleted once the render finishes.
       const urls = [];
+      tempSourceIdsRef.current = [];
       for (const im of images) {
-        urls.push(im.url || await uploadReelImage(im.file, `reel_${store.owner_id}_${Date.now()}.jpg`));
+        if (im.url) { urls.push(im.url); continue; }
+        const url = await uploadReelImage(im.file, `reel_${store.owner_id}_${Date.now()}.webp`);
+        urls.push(url);
+        tempSourceIdsRef.current.push(publicIdFromUrl(url));
       }
       const jobId = await submitReel({
         userId: store.owner_id,
@@ -201,7 +244,7 @@ export default function ReelStudio({ onBack }) {
         lengthSeconds: length,
         ratio,
         resolution,
-        customPrompt,
+        customPrompt: effectivePrompt,
         musicId,
         musicUrl: customMusic?.url || null,
         overlayText,
@@ -226,12 +269,16 @@ export default function ReelStudio({ onBack }) {
   };
 
   // Resolve the single storyboard photo to a hosted URL (library picks already
-  // are; device files upload once here and are reused at generate time).
+  // are; device files upload once here and are reused at generate time). A
+  // device upload is a TEMP source, tracked so it's deleted once the reel
+  // job it feeds finishes (see onJobChange) — never for a Library pick.
   const resolveStoryboardImage = async () => {
     const im = images[0];
     if (!im) throw new Error('Add a photo first.');
     if (im.url) return im.url;
-    return uploadReelImage(im.file, `reel_${store.owner_id}_${Date.now()}.jpg`);
+    const url = await uploadReelImage(im.file, `reel_${store.owner_id}_${Date.now()}.webp`);
+    tempSourceIdsRef.current = [publicIdFromUrl(url)];
+    return url;
   };
 
   // Storyboard step 1: analyse the photo and get an editable script. Free — no
@@ -277,7 +324,7 @@ export default function ReelStudio({ onBack }) {
         ratio,
         resolution,
         styleName,
-        customPrompt,
+        customPrompt: effectivePrompt,
         musicId,
         musicUrl: customMusic?.url || null,
         overlayText,
@@ -442,7 +489,12 @@ export default function ReelStudio({ onBack }) {
       <SuiteFeatureHeader
         onBack={onBack} icon={Film} title="Generate Reels"
         sub="Turn your photos into a short, shareable video — with AI motion and music."
-        right={unitsLeft !== Infinity ? <span className={styles.usage}>{unitsLeft} Studio credits left</span> : null}
+        right={(
+          <div className={hub.headerRight}>
+            {unitsLeft !== Infinity && <span className={styles.usage}>{unitsLeft} Studio credits left</span>}
+            <GuideButton id="reels" />
+          </div>
+        )}
       />
 
       {!featureOn ? (
@@ -520,7 +572,13 @@ export default function ReelStudio({ onBack }) {
 
           {/* Format */}
           <div className={styles.section}>
-            <label className={styles.label}>Format</label>
+            <label className={styles.label}>
+              Format
+              <InfoDot
+                text="The shape of your reel — match it to where you'll post it."
+                textHi="आपकी रील का शेप — जहां पोस्ट करनी है उसी के हिसाब से चुनें।"
+              />
+            </label>
             <div className={styles.fmtCards}>
               {RATIOS.map((r) => (
                 <button key={r.value} className={`${styles.fmtCard} ${ratio === r.value ? styles.fmtActive : ''}`} onClick={() => setRatio(r.value)}>
@@ -533,7 +591,13 @@ export default function ReelStudio({ onBack }) {
           {/* Length slider */}
           <div className={styles.section}>
             <div className={styles.rowBetween}>
-              <label className={styles.label}>Length</label>
+              <label className={styles.label}>
+                Length
+                <InfoDot
+                  text="How long the finished reel will be, in seconds. Longer reels use more credits."
+                  textHi="बनी हुई रील कितनी लंबी होगी, सेकंड में। लंबी रील में ज़्यादा क्रेडिट लगते हैं।"
+                />
+              </label>
               <span className={styles.lengthVal}>{length}s</span>
             </div>
             <input type="range" className={styles.slider} min={LENGTH_MIN} max={LENGTH_MAX} step={1}
@@ -547,7 +611,13 @@ export default function ReelStudio({ onBack }) {
 
           {/* Quality */}
           <div className={styles.section}>
-            <label className={styles.label}>Quality</label>
+            <label className={styles.label}>
+              Quality
+              <InfoDot
+                text="The video resolution — higher quality looks sharper but uses more credits and takes a little longer to render."
+                textHi="वीडियो का रेजोल्यूशन — ज़्यादा क्वालिटी में वीडियो शार्प दिखता है, पर ज़्यादा क्रेडिट लगते हैं और रेंडर होने में थोड़ा ज़्यादा समय लगता है।"
+              />
+            </label>
             <div className={styles.segment}>
               {QUALITIES.map((q) => (
                 <button key={q.value} className={`${styles.segItem} ${resolution === q.value ? styles.segActive : ''}`} onClick={() => setResolution(q.value)}>
@@ -559,7 +629,13 @@ export default function ReelStudio({ onBack }) {
 
           {/* Music */}
           <div className={styles.section}>
-            <label className={styles.label}>Music <span className={styles.muted}>· optional</span></label>
+            <label className={styles.label}>
+              Music <span className={styles.muted}>· optional</span>
+              <InfoDot
+                text="Add background music from our library, or upload your own track."
+                textHi="हमारी लाइब्रेरी से बैकग्राउंड म्यूज़िक जोड़ें, या अपना ट्रैक अपलोड करें।"
+              />
+            </label>
             {/* Shared hidden audio element for previews */}
             <audio ref={audioRef} onEnded={() => setPreviewId(null)} style={{ display: 'none' }} />
 
@@ -624,7 +700,13 @@ export default function ReelStudio({ onBack }) {
 
           {/* Contact overlay */}
           <div className={styles.section}>
-            <label className={styles.label}>Contact text <span className={styles.muted}>· optional</span></label>
+            <label className={styles.label}>
+              Contact text <span className={styles.muted}>· optional</span>
+              <InfoDot
+                text="Text burned into the video itself, like your shop name or phone number — always visible, even if the caption gets cut off when shared."
+                textHi="वीडियो में ही जुड़ा हुआ टेक्स्ट, जैसे आपकी दुकान का नाम या फ़ोन नंबर — यह हमेशा दिखता है, चाहे शेयर करते समय कैप्शन कट भी जाए।"
+              />
+            </label>
             <input className={styles.input} maxLength={80} placeholder="e.g. Contact XYZ Jewellers · 98765 43210"
               value={overlayText} onChange={(e) => setOverlayText(e.target.value)} />
             {overlayText.trim() && (
@@ -645,14 +727,11 @@ export default function ReelStudio({ onBack }) {
                 <div className={styles.rowBetween} style={{ gap: 12, marginTop: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 180 }}>
                     <label className={styles.miniLabel}>Font</label>
-                    <div className={styles.chips}>
+                    <select className={styles.input} value={overlayFont} onChange={(e) => setOverlayFont(e.target.value)}>
                       {OVERLAY_FONTS.map((f) => (
-                        <button key={f.value} className={`${styles.chip} ${overlayFont === f.value ? styles.chipActive : ''}`}
-                          style={{ fontFamily: f.css }} onClick={() => setOverlayFont(f.value)}>
-                          {f.label}
-                        </button>
+                        <option key={f.value} value={f.value} style={{ fontFamily: f.css }}>{f.label}</option>
                       ))}
-                    </div>
+                    </select>
                   </div>
                   <div style={{ minWidth: 160 }}>
                     <label className={styles.miniLabel}>Colour</label>
@@ -683,9 +762,36 @@ export default function ReelStudio({ onBack }) {
             )}
           </div>
 
+          {/* Background */}
+          <div className={styles.section}>
+            <label className={styles.label}>
+              Background <span className={styles.muted}>· optional</span>
+              <InfoDot
+                text="Change the backdrop behind your jewellery in the reel — pick a preset, or describe your own."
+                textHi="रील में आपकी ज्वेलरी के पीछे का बैकड्रॉप बदलें — कोई प्रीसेट चुनें, या अपना बताएं।"
+              />
+            </label>
+            <select className={styles.input} value={background} onChange={(e) => setBackground(e.target.value)}>
+              {BACKGROUNDS.map((b) => (
+                <option key={b.value} value={b.value}>{b.label}</option>
+              ))}
+            </select>
+            {background === BACKGROUND_CUSTOM && (
+              <input className={styles.input} style={{ marginTop: 8 }} maxLength={200}
+                placeholder="Describe the background you want…"
+                value={backgroundCustom} onChange={(e) => setBackgroundCustom(e.target.value)} />
+            )}
+          </div>
+
           {/* Prompt */}
           <div className={styles.section}>
-            <label className={styles.label}>Anything to add? <span className={styles.muted}>· optional</span></label>
+            <label className={styles.label}>
+              Anything to add? <span className={styles.muted}>· optional</span>
+              <InfoDot
+                text="Type anything the options above don't cover, in plain language — the AI will try to follow it."
+                textHi="ऊपर के ऑप्शन जो कवर नहीं करते, वह यहां अपने शब्दों में लिखें — AI उसे फॉलो करने की कोशिश करेगा।"
+              />
+            </label>
             <textarea className={styles.textarea} maxLength={300} placeholder="e.g. focus on the diamond, slow elegant motion…"
               value={customPrompt} onChange={(e) => setCustomPrompt(e.target.value)} />
           </div>

@@ -9,6 +9,10 @@
 import { N8N_RETOUCH, CLOUDINARY_CLOUD, CLOUDINARY_PRESET } from './config';
 import { compressImage } from './imageUtils';
 
+// Sentinel used across style/metal option lists — picking it reveals a
+// free-text field instead of one of the presets.
+export const CUSTOM_OPTION = 'custom';
+
 export const RETOUCH_STYLES = [
   { v: 'ai', label: '✨ Let AI decide', tip: 'AI picks the most flattering studio scene for your piece.' },
   { v: 'white', label: 'Marketplace white', tip: 'Pure white background — ready for Amazon / Flipkart listings.' },
@@ -19,6 +23,7 @@ export const RETOUCH_STYLES = [
   { v: 'marble', label: 'Marble flat-lay', tip: 'White marble slab, soft daylight, styled Instagram flat-lay look.' },
   { v: 'festive', label: 'Festive bokeh', tip: 'Warm blurred golden diya/bokeh lights over rich maroon silk.' },
   { v: 'daylight', label: 'Soft daylight', tip: 'Bright neutral window daylight on a clean neutral surface — natural and airy.' },
+  { v: CUSTOM_OPTION, label: 'Custom…', tip: 'Describe your own background in words.' },
 ];
 export const DEFAULT_STYLE = 'ai';
 
@@ -28,6 +33,7 @@ export const TARGET_METALS = [
   { v: 'white_gold', label: 'White Gold', tip: 'Bright cool silvery-white, rhodium-plated look.', dot: '#E8E8EC' },
   { v: 'silver', label: 'Silver', tip: 'Bright neutral sterling silver — cooler and lighter than white gold.', dot: '#C0C0C8' },
   { v: 'antique_gold', label: 'Antique Gold', tip: 'Matte oxidised temple / heritage gold finish.', dot: '#B08D57' },
+  { v: CUSTOM_OPTION, label: 'Custom…', tip: 'Describe the metal / finish you want in words.' },
 ];
 export const DEFAULT_TARGET_METAL = 'rose_gold';
 
@@ -37,8 +43,10 @@ export const METAL_SWAP_STYLES = [
   ...RETOUCH_STYLES.filter((s) => s.v !== 'ai'),
 ];
 
-// Upload a device photo to Cloudinary and return its secure_url.
-export async function uploadRetouchImage(fileOrBlob, filename = 'source.jpg') {
+// Upload a device photo to Cloudinary and return its secure_url. Callers that
+// need to delete this as a temp source once done (see deleteTempUpload in
+// lib/imageUtils.js) can recover its public_id via publicIdFromUrl(url).
+export async function uploadRetouchImage(fileOrBlob, filename = 'source.webp') {
   const compressed = await compressImage(fileOrBlob);
   const fd = new FormData();
   fd.append('file', compressed, filename);
@@ -60,9 +68,13 @@ function pickUrl(data) {
 // Run one retouch/variant generation. Returns the result image URL; throws with
 // a user-facing message on any failure (so the caller shows the error and does
 // NOT charge credits).
-export async function runRetouch({ ownerId, imageUrl, mode, style, targetMetal, modelReferenceUrl }) {
+export async function runRetouch({ ownerId, imageUrl, mode, style, styleCustom, targetMetal, targetMetalCustom, modelReferenceUrl }) {
   const body = { owner_id: ownerId, image_url: imageUrl, mode, style };
-  if (mode === 'variant' && targetMetal) body.target_metal = targetMetal;
+  if (style === CUSTOM_OPTION && styleCustom?.trim()) body.style_custom = styleCustom.trim();
+  if (mode === 'variant' && targetMetal) {
+    body.target_metal = targetMetal;
+    if (targetMetal === CUSTOM_OPTION && targetMetalCustom?.trim()) body.target_metal_custom = targetMetalCustom.trim();
+  }
   // Collection model lock (P1-2): the first generation in a collection becomes
   // the reference passed to every later piece, which is the only reliable way
   // to hold a face steady — Gemini has no usable seed for this.

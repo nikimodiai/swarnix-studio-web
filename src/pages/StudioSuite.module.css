@@ -89,6 +89,7 @@
   gap: 16px; flex-wrap: wrap;
 }
 .featTitleLeft { min-width: 0; }
+.headerRight { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
 /* ── Feature lock ── */
 .lock {

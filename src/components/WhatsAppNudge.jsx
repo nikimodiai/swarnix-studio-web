@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { MessageCircle, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { SWARNIX_WA_NUMBER } from '../lib/config';
+import ContactSupportForm from './ContactSupportForm';
 import styles from './WhatsAppNudge.module.css';
 
 // Post-signup nudge: invite the jeweller to message the Swarnix WhatsApp agent.
@@ -36,6 +37,7 @@ function readDismissals() {
 export default function WhatsAppNudge() {
   const { hasPhone } = useAuth();
   const [dismissals, setDismissals] = useState(readDismissals);
+  const [supportOpen, setSupportOpen] = useState(false);
 
   const dismiss = useCallback(() => {
     const next = dismissals + 1;
@@ -83,7 +85,17 @@ export default function WhatsAppNudge() {
         >
           <MessageCircle size={15} /> Say “Hi” on WhatsApp
         </a>
+
+        <p className={styles.suiteNote}>
+          This agent is part of the <b>Swarnix Full Suite</b> — WhatsApp AI agent, smart
+          inventory, dynamic jewellery pricing and more. To know more,{' '}
+          <button type="button" className={styles.suiteLink} onClick={() => setSupportOpen(true)}>
+            contact our support team
+          </button>.
+        </p>
       </div>
+
+      {supportOpen && <ContactSupportForm onClose={() => setSupportOpen(false)} />}
     </div>
   );
 }

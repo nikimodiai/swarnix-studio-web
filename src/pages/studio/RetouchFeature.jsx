@@ -5,7 +5,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { canUseSuite, suiteUsageText, chargeSuiteGraded } from '../../lib/studioSuite';
 import { hasFeature } from '../../lib/plans';
-import { uploadRetouchImage, runRetouch } from '../../lib/retouch';
+import { uploadRetouchImage, runRetouch, CUSTOM_OPTION } from '../../lib/retouch';
+import { deleteTempUpload } from '../../lib/imageUtils';
+import { publicIdFromUrl } from '../../lib/watermark';
+import GuideButton from '../../components/GuideButton';
 import { saveGeneration } from '../../lib/watermark';
 import { logGeneration, markDownloaded } from '../../lib/analytics';
 import { SuiteFeatureHeader } from '../StudioSuite';
@@ -36,7 +39,9 @@ export default function RetouchFeature({
   const [srcUrl, setSrcUrl] = useState(null);      // already-hosted URL (library pick)
   const [srcPreview, setSrcPreview] = useState(null);
   const [style, setStyle] = useState(defaultStyle);
+  const [styleCustom, setStyleCustom] = useState('');
   const [metal, setMetal] = useState(defaultMetal || null);
+  const [metalCustom, setMetalCustom] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   // 'free' once we know this generation was paid for from the free allowance —
@@ -86,6 +91,7 @@ export default function RetouchFeature({
     setSrcPreview(null);
     setResult(null); setResultGrade(null); setEventId(null);
     setError(null);
+    setStyleCustom(''); setMetalCustom('');
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -96,15 +102,21 @@ export default function RetouchFeature({
     setResult(null); setResultGrade(null); setEventId(null);
     const startedAt = Date.now();
     let imageUrl = srcUrl;
+    // Library picks are already hosted (srcUrl set); device files need a
+    // Cloudinary upload, and that upload is a TEMP source — deleted in
+    // `finally` once this generation finishes, since it's not the user's
+    // library (a Library pick must never be deleted here).
+    const wasDeviceUpload = !srcUrl;
     try {
-      // Library picks are already hosted; device files need a Cloudinary upload.
-      imageUrl = srcUrl || await uploadRetouchImage(srcFile, `${kind}_${store.owner_id}_${Date.now()}.jpg`);
+      imageUrl = srcUrl || await uploadRetouchImage(srcFile, `${kind}_${store.owner_id}_${Date.now()}.webp`);
       const url = await runRetouch({
         ownerId: store.owner_id,
         imageUrl,
         mode,
         style,
+        styleCustom,
         targetMetal: mode === 'variant' ? metal : undefined,
+        targetMetalCustom: metalCustom,
       });
       setResult(url);
 
@@ -112,8 +124,8 @@ export default function RetouchFeature({
       // the charge actually drew from — free-grade output gets watermarked.
       const { grade } = await chargeSuiteGraded(store.owner_id, 1);
       const label = mode === 'variant'
-        ? (metalOptions?.find((m) => m.v === metal)?.label || metal)
-        : (styleOptions?.find((s) => s.v === style)?.label || style);
+        ? (metal === CUSTOM_OPTION ? metalCustom.trim() || 'Custom' : metalOptions?.find((m) => m.v === metal)?.label || metal)
+        : (style === CUSTOM_OPTION ? styleCustom.trim() || 'Custom' : styleOptions?.find((s) => s.v === style)?.label || style);
       try {
         const { displayUrl } = await saveGeneration({
           url,
@@ -145,6 +157,7 @@ export default function RetouchFeature({
       });
     } finally {
       setBusy(false);
+      if (wasDeviceUpload) deleteTempUpload(publicIdFromUrl(imageUrl));
     }
   };
 
@@ -169,7 +182,12 @@ export default function RetouchFeature({
     <div className={hub.page}>
       <SuiteFeatureHeader
         onBack={onBack} icon={icon} title={title} sub={sub}
-        right={usageText ? <span className={styles.usage}>{usageText}</span> : null}
+        right={(
+          <div className={hub.headerRight}>
+            {usageText && <span className={styles.usage}>{usageText}</span>}
+            <GuideButton id={kind} />
+          </div>
+        )}
       />
 
       {!featureOn ? (
@@ -221,13 +239,35 @@ export default function RetouchFeature({
               <>
                 {mode === 'variant' && metalOptions && (
                   <div className={styles.group}>
-                    <span className={styles.groupLabel}>Target metal</span>
+                    <span className={styles.groupLabel}>
+                      Target metal
+                      <InfoDot
+                        text="The metal colour the piece will be shown in — the design, stones and setting stay the same."
+                        textHi="जिस रंग के मेटल में पीस दिखाना है — डिज़ाइन, स्टोन और सेटिंग वही रहेंगे।"
+                      />
+                    </span>
                     {chipRow(metalOptions, metal, setMetal)}
+                    {metal === CUSTOM_OPTION && (
+                      <input className={styles.customInput} maxLength={150}
+                        placeholder="Describe the metal / finish you want…"
+                        value={metalCustom} onChange={(e) => setMetalCustom(e.target.value)} />
+                    )}
                   </div>
                 )}
                 <div className={styles.group}>
-                  <span className={styles.groupLabel}>{mode === 'variant' ? 'Background' : 'Studio background'}</span>
+                  <span className={styles.groupLabel}>
+                    {mode === 'variant' ? 'Background' : 'Studio background'}
+                    <InfoDot
+                      text="The backdrop and lighting behind your jewellery in the final photo."
+                      textHi="फाइनल फोटो में आपकी ज्वेलरी के पीछे का बैकड्रॉप और लाइटिंग।"
+                    />
+                  </span>
                   {chipRow(styleOptions, style, setStyle)}
+                  {style === CUSTOM_OPTION && (
+                    <input className={styles.customInput} maxLength={150}
+                      placeholder="Describe the background you want…"
+                      value={styleCustom} onChange={(e) => setStyleCustom(e.target.value)} />
+                  )}
                 </div>
 
                 <button className={styles.generateBtn} onClick={generate} disabled={busy || !canUse}>

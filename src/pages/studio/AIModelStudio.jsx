@@ -4,6 +4,7 @@ import { CATEGORIES } from '../../lib/config';
 import { useToast } from '../../hooks/useToast';
 import AIModelPanel from '../../components/AIModelPanel';
 import { SuiteFeatureHeader } from '../StudioSuite';
+import GuideButton from '../../components/GuideButton';
 import hub from '../StudioSuite.module.css';
 import styles from './AIModelStudio.module.css';
 
@@ -30,6 +31,7 @@ export default function AIModelStudio({ onBack, onNavigate }) {
         icon={Sparkles}
         title="AI Model"
         sub="Put your jewellery on a photorealistic model — ready for your catalogue and socials."
+        right={<GuideButton id="ai_model" />}
       />
 
       {/* Category — AIModelPanel needs it to place the piece correctly. */}

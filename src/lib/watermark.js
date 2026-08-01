@@ -91,6 +91,10 @@ export async function archiveClean(url) {
   fd.append('file', url);                       // Cloudinary fetches it server-side
   fd.append('upload_preset', 'jewelleryupload');
   fd.append('folder', 'swarnix-studio-clean');
+  // Force the stored asset to webp — the client never touches the bytes here
+  // (Cloudinary fetches `url` itself), so this eager transform is the only
+  // way to make the archived copy webp instead of whatever n8n returned.
+  fd.append('eager', 'f_webp');
   const res = await fetch(
     `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`,
     { method: 'POST', body: fd }

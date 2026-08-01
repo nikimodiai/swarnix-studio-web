@@ -24,7 +24,7 @@
 .modeActive { border-color: var(--navy, #0B1829); background: var(--navy, #0B1829); color: #fff; }
 
 .group { display: flex; flex-direction: column; gap: 7px; }
-.groupLabel { font-size: 13px; font-weight: 700; color: var(--ink, #222); }
+.groupLabel { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--ink, #222); }
 .optional { font-weight: 500; color: var(--ink-soft, #7a7a83); }
 
 .rowTwo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

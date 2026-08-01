@@ -9,6 +9,7 @@ import { saveGenerations } from '../lib/watermark';
 import { logGeneration } from '../lib/analytics';
 import { shareImageFile } from '../lib/imageUtils';
 import StudioLibraryPicker from './StudioLibraryPicker';
+import InfoDot from './InfoDot';
 import styles from './AIModelPanel.module.css';
 
 // ── Owner tuning options (chips) ────────────────────────────────────
@@ -121,27 +122,6 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
   const [sel, setSel]               = useState(DEFAULT_SEL);
   const [libOpen, setLibOpen]       = useState(false);
 
-  // ── Tooltip (hover on laptop, tap on touch) ──
-  const isTouch = useRef(typeof window !== 'undefined' && window.matchMedia?.('(hover:none)').matches).current;
-  const [tip, setTip] = useState(null);   // { text, rect, place }
-  const tipTimer = useRef(null);
-  const openTip = (el, text) => {
-    if (!text) return;
-    const rect = el.getBoundingClientRect();
-    setTip({ text, rect, place: rect.top > 170 ? 'above' : 'below' });
-  };
-  const openTipTimed = (el, text) => {
-    openTip(el, text);
-    clearTimeout(tipTimer.current);
-    tipTimer.current = setTimeout(() => setTip(null), 3200);
-  };
-  const closeTip = () => setTip(null);
-  useEffect(() => {
-    const h = () => setTip(null);
-    window.addEventListener('scroll', h, true);
-    window.addEventListener('resize', h);
-    return () => { window.removeEventListener('scroll', h, true); window.removeEventListener('resize', h); };
-  }, []);
 
   // Credit balance (shared across every Studio Suite feature). `remaining` drives
   // the badge, the per-photo pre-check, and the out-of-credits note.
@@ -299,15 +279,6 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
     if (!shared) setShareOpen(v => !v);
   };
 
-  // ── Tooltip prop helpers ──
-  const tipProps = (text) => isTouch
-    ? { onClick: (e) => { e.stopPropagation(); openTipTimed(e.currentTarget, text); } }
-    : { onMouseEnter: (e) => openTip(e.currentTarget, text), onMouseLeave: closeTip };
-
-  const infoDot = (text) => (
-    <span className={styles.infoDot} role="button" aria-label="Help" {...tipProps(text)}>i</span>
-  );
-
 // Render a single-select dropdown for one tuning field. Chip buttons looked
   // fine on a laptop but turned into an unreadable wall on a phone — a native
   // <select> is compact on every screen size and gets the OS picker for free
@@ -324,25 +295,14 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
     </select>
   );
 
-  const groupHead = (label, tipText, hint) => (
+  const groupHead = (label, tipText, hint, tipTextHi) => (
     <div className={styles.groupHead}>
       <span className={styles.groupLabel}>{label}</span>
-      {tipText && infoDot(tipText)}
+      {tipText && <InfoDot text={tipText} textHi={tipTextHi} />}
       {hint && <span className={styles.groupHint}>{hint}</span>}
     </div>
   );
 
-  const tipStyle = () => {
-    if (!tip) return {};
-    const tw = 220;
-    let left = tip.rect.left + tip.rect.width / 2 - tw / 2;
-    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
-    const top = tip.place === 'above' ? tip.rect.top - 8 : tip.rect.bottom + 8;
-    return {
-      left, top, maxWidth: tw,
-      transform: tip.place === 'above' ? 'translateY(-100%)' : 'none',
-    };
-  };
 
   return (
     <div className={styles.panel}>
@@ -429,40 +389,40 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
 
               {/* ── Occasion (top) ── */}
               <div className={styles.occasionBox}>
-                {groupHead('Occasion', 'Pick the occasion first. One tap sets a matching outfit, background and mood below — you can still change any of them after.')}
+                {groupHead('Occasion', 'Pick the occasion first. One tap sets a matching outfit, background and mood below — you can still change any of them after.', null, 'सबसे पहले मौका चुनें। एक टैप से नीचे मैचिंग आउटफिट, बैकग्राउंड और मूड अपने आप सेट हो जाता है — आप इन्हें बाद में बदल भी सकते हैं।')}
                 {selectField('occasion', OCCASIONS)}
               </div>
 
               {/* ── Core controls ── */}
               <div className={styles.group}>
-                {groupHead('Model', 'Who wears the jewellery in the photo.')}
+                {groupHead('Model', 'Who wears the jewellery in the photo.', null, 'फोटो में ज्वेलरी कौन पहनेगा।')}
                 {selectField('model_gender', MODELS)}
               </div>
 
               <div className={styles.group}>
-                {groupHead('Skin tone', 'Show your jewellery on the complexion your customers actually have — gold and diamond read very differently on fair vs deep skin.')}
+                {groupHead('Skin tone', 'Show your jewellery on the complexion your customers actually have — gold and diamond read very differently on fair vs deep skin.', null, 'अपनी ज्वेलरी को उस स्किन टोन पर दिखाएं जो आपके ग्राहकों की असल में है — गोल्ड और डायमंड फेयर और डार्क स्किन पर अलग-अलग दिखते हैं।')}
                 {selectField('skin_tone', SKIN)}
               </div>
 
               <div className={styles.group}>
-                {groupHead('Framing', "How much of the model is in the photo. Tighter crops keep all attention on the jewellery. 'Hands only' / 'Neck only' crop out the face entirely.")}
+                {groupHead('Framing', "How much of the model is in the photo. Tighter crops keep all attention on the jewellery. 'Hands only' / 'Neck only' crop out the face entirely.", null, 'फोटो में मॉडल का कितना हिस्सा दिखे। टाइट क्रॉप से पूरा ध्यान ज्वेलरी पर रहता है। "Hands only" / "Neck only" में चेहरा बिल्कुल नहीं दिखता।')}
                 {selectField('framing', FRAMING)}
               </div>
 
               <div className={styles.group}>
-                {groupHead('Pose / angle', 'The angle the model faces. Side profile shows off earrings, nose pins and maang tikka best.')}
+                {groupHead('Pose / angle', 'The angle the model faces. Side profile shows off earrings, nose pins and maang tikka best.', null, 'मॉडल किस एंगल पर है। साइड प्रोफाइल में इयररिंग, नोज़ पिन और मांग टीका सबसे अच्छे दिखते हैं।')}
                 {selectField('pose', POSE)}
               </div>
 
               <div className={styles.group}>
-                {groupHead('Attire', 'The outfit the model wears, and its colour. A neckline and colour that complement your metal make the jewellery pop.')}
+                {groupHead('Attire', 'The outfit the model wears, and its colour. A neckline and colour that complement your metal make the jewellery pop.', null, 'मॉडल जो आउटफिट पहनेगा, और उसका रंग। मेटल से मैच करती नेकलाइन और रंग से ज्वेलरी और उभरकर दिखती है।')}
                 {selectField('attire', ATTIRE)}
                 <label className={styles.subFieldLabel}>Outfit colour</label>
                 {selectField('attire_color', ATTIRE_COLOR)}
               </div>
 
               <div className={styles.group}>
-                {groupHead('Background', 'The setting behind the model. Plain studio looks are clean for catalogues; lifestyle backdrops tell a story for social media.')}
+                {groupHead('Background', 'The setting behind the model. Plain studio looks are clean for catalogues; lifestyle backdrops tell a story for social media.', null, 'मॉडल के पीछे की सेटिंग। सादा स्टूडियो लुक कैटलॉग के लिए साफ़ रहता है; लाइफस्टाइल बैकड्रॉप सोशल मीडिया के लिए एक कहानी बताता है।')}
                 {selectField('background', BACKGROUND)}
                 {sel.background === 'brand' && (
                   <label className={styles.brandColorRow}>
@@ -482,18 +442,18 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
                   toggle, since dropdowns take almost no vertical space. ── */}
               <div className={styles.advBody}>
                 <div className={styles.group}>
-                  {groupHead('Aspect ratio', "The shape of the final image — match it to where you'll post. 9:16 for a WhatsApp / Instagram Story, square for the feed.")}
+                  {groupHead('Aspect ratio', "The shape of the final image — match it to where you'll post. 9:16 for a WhatsApp / Instagram Story, square for the feed.", null, 'फाइनल फोटो का शेप — जहां पोस्ट करना है उसी के हिसाब से चुनें। WhatsApp / Instagram Story के लिए 9:16, फीड के लिए स्क्वायर।')}
                   {selectField('aspect', ASPECT)}
                 </div>
                 <div className={styles.group}>
-                  {groupHead('Lighting / look', 'The overall mood of the photo — from bright catalogue lighting to dramatic editorial shadows.')}
+                  {groupHead('Lighting / look', 'The overall mood of the photo — from bright catalogue lighting to dramatic editorial shadows.', null, 'फोटो का पूरा मूड — तेज़ कैटलॉग लाइटिंग से लेकर ड्रामैटिक एडिटोरियल शैडो तक।')}
                   {selectField('lighting', LIGHTING)}
                 </div>
               </div>
 
               {/* ── Custom note ── */}
               <div className={styles.group}>
-                {groupHead('Custom note', "Type anything the buttons above don't cover, in plain language. The AI will try to follow it.", 'optional')}
+                {groupHead('Custom note', "Type anything the buttons above don't cover, in plain language. The AI will try to follow it.", 'optional', 'ऊपर के बटन जो कवर नहीं करते, वह यहां अपने शब्दों में लिखें। AI उसे फॉलो करने की कोशिश करेगा।')}
                 <textarea
                   className={styles.note}
                   placeholder="e.g. open hair, red bindi, temple jewellery vibe, soft smile…"
@@ -572,7 +532,10 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
 
                 <div className={styles.photosWrap}>
                   <span className={styles.photosLabel}>Photos</span>
-                  {infoDot('How many photos to generate in one go. More photos give you variety to choose from, but use up more of your monthly quota.')}
+                  <InfoDot
+                    text="How many photos to generate in one go. More photos give you variety to choose from, but use up more of your monthly quota."
+                    textHi="एक बार में कितनी फोटो बनानी हैं। ज़्यादा फोटो से आपको चुनने के लिए ज़्यादा विकल्प मिलते हैं, पर आपके मासिक कोटे से ज़्यादा इस्तेमाल होता है।"
+                  />
                   <div className={styles.photoToggle}>
                     {PHOTOS.map(p => (
                       <button
@@ -598,11 +561,6 @@ export default function AIModelPanel({ category, onAddImage, addLabel = 'Add to 
             </>
           )}
         </>
-      )}
-
-      {/* Floating tooltip */}
-      {tip && (
-        <div className={`${styles.tip} ${styles[tip.place]}`} style={tipStyle()}>{tip.text}</div>
       )}
 
       {/* Lightbox */}

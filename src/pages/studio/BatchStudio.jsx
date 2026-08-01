@@ -7,7 +7,7 @@ import { MAX_IMAGE_BYTES } from '../../lib/config';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
 import { canUseSuite, suiteUnitsLeft } from '../../lib/studioSuite';
-import { RETOUCH_STYLES, DEFAULT_STYLE, TARGET_METALS, DEFAULT_TARGET_METAL, METAL_SWAP_STYLES } from '../../lib/retouch';
+import { RETOUCH_STYLES, DEFAULT_STYLE, TARGET_METALS, DEFAULT_TARGET_METAL, METAL_SWAP_STYLES, CUSTOM_OPTION } from '../../lib/retouch';
 import { CATEGORIES } from '../../lib/config';
 import {
   MAX_BATCH_PIECES, COLLECTION_ELIGIBLE_FEATURES, uploadPieces, createBatch, runBatch,
@@ -16,6 +16,8 @@ import {
 import { downloadUrlFor } from '../../lib/watermark';
 import { downloadMedia, shareToWhatsApp, nativeShareMedia } from '../../lib/share';
 import { SuiteFeatureHeader } from '../StudioSuite';
+import GuideButton from '../../components/GuideButton';
+import InfoDot from '../../components/InfoDot';
 import hub from '../StudioSuite.module.css';
 import styles from './BatchStudio.module.css';
 
@@ -47,7 +49,9 @@ export default function BatchStudio({ onBack, onNavigate }) {
 
   const [feature, setFeature] = useState('studio_photo'); // studio_photo | metal_swap | ai_model
   const [style, setStyle] = useState(DEFAULT_STYLE);
+  const [styleCustom, setStyleCustom] = useState('');
   const [metal, setMetal] = useState(DEFAULT_TARGET_METAL);
+  const [metalCustom, setMetalCustom] = useState('');
   const [category, setCategory] = useState(CATEGORIES[0]?.value || 'Ring');
   const [pieces, setPieces] = useState([]);   // [{ file, preview, label }]
   const [items, setItems] = useState([]);     // live rows once submitted
@@ -149,7 +153,7 @@ export default function BatchStudio({ onBack, onNavigate }) {
       const withLabels = uploaded.map((u, i) => ({ ...u, label: pieces[i].label }));
       const settings = feature === 'ai_model'
         ? { category, aiModelSel: {} }
-        : { style, targetMetal: feature === 'metal_swap' ? metal : null };
+        : { style, styleCustom, targetMetal: feature === 'metal_swap' ? metal : null, targetMetalCustom: metalCustom };
       const { batchId, items: created } = await createBatch({
         feature, settings, collectionId: collection?.id || null, pieces: withLabels,
       });
@@ -214,7 +218,12 @@ export default function BatchStudio({ onBack, onNavigate }) {
       <SuiteFeatureHeader
         onBack={onBack} icon={Layers} title="Batch Studio"
         sub={`Up to ${MAX_BATCH_PIECES} pieces in one go — same settings, same model.`}
-        right={<span className={styles.usage}>{credits} credits left</span>}
+        right={(
+          <div className={hub.headerRight}>
+            <span className={styles.usage}>{credits} credits left</span>
+            <GuideButton id="batch" />
+          </div>
+        )}
       />
 
       <div className={styles.layout}>
@@ -318,7 +327,10 @@ export default function BatchStudio({ onBack, onNavigate }) {
         <div className={styles.col}>
           <div className={styles.panel}>
             <label className={styles.field}>
-              <span>What to do with every piece</span>
+              <span className={styles.fieldLabelRow}>
+                What to do with every piece
+                <InfoDot text="The feature applied to every photo in this batch." textHi="इस बैच की हर फोटो पर लागू होने वाला फीचर।" />
+              </span>
               <select className={styles.input} value={feature} disabled={submitted}
                 onChange={(e) => setFeature(e.target.value)}>
                 <option value="studio_photo">Studio Photo — clean product shot</option>
@@ -329,21 +341,37 @@ export default function BatchStudio({ onBack, onNavigate }) {
 
             {feature === 'metal_swap' && (
               <label className={styles.field}>
-                <span>Target metal</span>
+                <span className={styles.fieldLabelRow}>
+                  Target metal
+                  <InfoDot text="The metal colour every piece in this batch will be shown in." textHi="इस बैच की हर फोटो किस रंग के मेटल में दिखेगी।" />
+                </span>
                 <select className={styles.input} value={metal} disabled={submitted}
                   onChange={(e) => setMetal(e.target.value)}>
                   {TARGET_METALS.map((m) => <option key={m.v} value={m.v}>{m.label}</option>)}
                 </select>
+                {metal === CUSTOM_OPTION && (
+                  <input className={styles.input} style={{ marginTop: 8 }} maxLength={150} disabled={submitted}
+                    placeholder="Describe the metal / finish you want…"
+                    value={metalCustom} onChange={(e) => setMetalCustom(e.target.value)} />
+                )}
               </label>
             )}
 
             {feature !== 'ai_model' && (
               <label className={styles.field}>
-                <span>Background / scene</span>
+                <span className={styles.fieldLabelRow}>
+                  Background / scene
+                  <InfoDot text="The backdrop applied to every piece in this batch." textHi="इस बैच की हर फोटो पर लागू होने वाला बैकड्रॉप।" />
+                </span>
                 <select className={styles.input} value={style} disabled={submitted}
                   onChange={(e) => setStyle(e.target.value)}>
                   {styleOptions.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
                 </select>
+                {style === CUSTOM_OPTION && (
+                  <input className={styles.input} style={{ marginTop: 8 }} maxLength={150} disabled={submitted}
+                    placeholder="Describe the background you want…"
+                    value={styleCustom} onChange={(e) => setStyleCustom(e.target.value)} />
+                )}
               </label>
             )}
 

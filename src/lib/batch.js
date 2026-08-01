@@ -25,6 +25,8 @@ import { saveGeneration, hasCleanDownloads } from './watermark';
 import { logGeneration } from './analytics';
 import { runRetouch, uploadRetouchImage } from './retouch';
 import { runAiModel } from './aiModel';
+import { deleteTempUpload } from './imageUtils';
+import { publicIdFromUrl } from './watermark';
 
 export const MAX_BATCH_PIECES = 10;
 // Only ai_model batches may attach a collection.
@@ -192,7 +194,9 @@ export async function runBatch({
             imageUrl: item.source_url,
             mode: feature === 'metal_swap' ? 'variant' : 'retouch',
             style: settings.style,
+            styleCustom: settings.styleCustom,
             targetMetal: settings.targetMetal,
+            targetMetalCustom: settings.targetMetalCustom,
           });
 
       const { id: galleryId, displayUrl } = await saveGeneration({
@@ -253,6 +257,11 @@ export async function runBatch({
         sourceUrl: item.source_url,
         latencyMs: Date.now() - startedAt,
       });
+    } finally {
+      // Every batch piece is a device upload (batch has no library-pick path),
+      // so its source is always a temp upload — safe to delete once this
+      // item's generation is done, success or fail.
+      deleteTempUpload(publicIdFromUrl(item.source_url));
     }
   }
 

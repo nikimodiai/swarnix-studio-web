@@ -227,9 +227,36 @@ function Topbar({ route, onNavigate }) {
   );
 }
 
+// In-app screens ('studio' | 'buy-credits' | a ROUTABLE_FEATURES id) are
+// pushed onto browser history as a location.hash so the hardware/browser
+// back button steps back through app screens instead of popping out of the
+// SPA entirely (which used to strand the user on a stale reload that
+// resolved as signed-out). Falls back to 'studio' — the app's homepage —
+// once the in-app history is exhausted, rather than leaving the app.
+function useShellRoute() {
+  const initial = window.location.hash.slice(1) || 'studio';
+  const [route, setRouteState] = useState(initial);
+
+  useEffect(() => {
+    const onPop = () => setRouteState(window.location.hash.slice(1) || 'studio');
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  const setRoute = (id) => {
+    if (id !== window.location.hash.slice(1)) {
+      window.history.pushState({}, '', id === 'studio' ? window.location.pathname : `#${id}`);
+    }
+    setRouteState(id);
+    window.scrollTo(0, 0);
+  };
+
+  return [route, setRoute];
+}
+
 function Shell({ navigate }) {
   const { initializing, session } = useAuth();
-  const [route, setRoute] = useState('studio'); // 'studio' | 'buy-credits' | a ROUTABLE_FEATURES id
+  const [route, setRoute] = useShellRoute(); // 'studio' | 'buy-credits' | a ROUTABLE_FEATURES id
   // Set when the topbar's Batch Studio button (or anything else with
   // `openFeature`) is clicked — passed to StudioSuite so it deep-links into
   // the hub feature instead of showing the tile grid first.

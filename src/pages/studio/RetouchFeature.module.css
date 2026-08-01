@@ -50,7 +50,7 @@
 
 /* Option groups */
 .group { margin-bottom: 16px; }
-.groupLabel { display: block; font-size: 13.5px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.groupLabel { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 7px; }
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -61,6 +61,11 @@
 .chip:hover { border-color: var(--gold); }
 .chipActive { border-color: var(--gold); background: rgba(200,149,108,.12); color: var(--navy); }
 .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
+.customInput {
+  width: 100%; margin-top: 8px; padding: 9px 12px; border: 1.5px solid var(--border-card); border-radius: 8px;
+  background: #fff; color: var(--ink); font-size: 14px; font-family: var(--font-body);
+}
+.customInput:focus { outline: none; border-color: var(--gold); }
 
 .generateBtn {
   width: 100%; margin-top: 4px;

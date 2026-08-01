@@ -67,6 +67,19 @@ export const N8N_REEL_GENERATE = N8N_BASE + '/reel-generate';
 export const N8N_REEL_STORYBOARD = N8N_BASE + '/reel-storyboard';
 export const N8N_REEL_STORYBOARD_GENERATE = N8N_BASE + '/reel-storyboard-generate';
 
+// Deletes a temp SOURCE upload (a device/camera photo uploaded just to run one
+// generation) from Cloudinary once that generation finishes. Cloudinary's
+// unsigned preset cannot delete — only a signed request (API key + secret) can
+// — so this must be a server-side workflow holding those credentials; the
+// browser only ever sends the public_id. JSON { public_id } → { ok: true }.
+// NOT called for images picked from the user's Library — those are permanent.
+export const N8N_CLOUDINARY_DELETE = N8N_BASE + '/swarnix-cloudinary-delete';
+
+// Contact Support form (WhatsAppNudge's "Swarnix Full Suite" panel). JSON
+// { name, phone, message, owner_id? } → emails support@nelishkaai.in server-side
+// (the browser has no mail-sending credentials). → { ok: true }.
+export const N8N_CONTACT_SUPPORT = N8N_BASE + '/swarnix-contact-support';
+
 export const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,

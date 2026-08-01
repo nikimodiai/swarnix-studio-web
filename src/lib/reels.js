@@ -39,12 +39,75 @@ export const QUALITIES = [
 ];
 export const DEFAULT_RESOLUTION = '720p';
 
-export const OVERLAY_FONTS = [
-  { value: 'sans', label: 'Modern', css: "'Segoe UI', system-ui, sans-serif" },
-  { value: 'serif', label: 'Classic', css: "Georgia, 'Times New Roman', serif" },
-  { value: 'mono', label: 'Mono', css: "'Courier New', monospace" },
+// Shared with AI Model (src/components/AIModelPanel.jsx) so the same
+// backdrop vocabulary works across stills and reels; 'custom' opens a
+// free-text field (see BACKGROUND_CUSTOM sentinel) instead of a preset.
+export const BACKGROUND_CUSTOM = 'custom';
+export const BACKGROUNDS = [
+  { value: 'none',         label: 'No change',       hint: 'Keep the background from your photos as-is.' },
+  { value: 'studio_white', label: 'Studio white',    hint: 'Clean white studio — the standard e-commerce look.' },
+  { value: 'studio_grey',  label: 'Studio grey',     hint: 'Neutral grey studio — soft and premium.' },
+  { value: 'beige',        label: 'Beige',           hint: 'Warm beige backdrop — flatters gold jewellery.' },
+  { value: 'gradient',     label: 'Soft gradient',   hint: 'Soft colour gradient — modern and vibrant.' },
+  { value: 'mandap',       label: 'Wedding mandap',  hint: 'Decorated wedding stage — for bridal sets.' },
+  { value: 'palace',       label: 'Palace',          hint: 'Royal palace interior — luxurious, regal feel.' },
+  { value: 'outdoor',      label: 'Outdoor bokeh',   hint: 'Blurred outdoor background — natural lifestyle look.' },
+  { value: BACKGROUND_CUSTOM, label: 'Custom…',      hint: 'Describe your own background.' },
 ];
-export const DEFAULT_OVERLAY_FONT = 'sans';
+export const DEFAULT_BACKGROUND = 'none';
+const BACKGROUND_PROMPT_TEXT = {
+  studio_white: 'a clean white studio background',
+  studio_grey: 'a neutral grey studio background',
+  beige: 'a warm beige backdrop',
+  gradient: 'a soft colour gradient background',
+  mandap: 'a decorated wedding mandap / stage background',
+  palace: 'a royal palace interior background',
+  outdoor: 'a blurred outdoor bokeh background',
+};
+
+// Folds the chosen background into the free-text prompt sent to n8n — the
+// reel pipeline has no dedicated background field, so this is appended to
+// customPrompt rather than requiring a backend change.
+export function backgroundPromptPhrase(background, customText) {
+  if (!background || background === 'none') return '';
+  if (background === BACKGROUND_CUSTOM) return (customText || '').trim();
+  return BACKGROUND_PROMPT_TEXT[background] || '';
+}
+
+// `value` is sent to n8n as `overlay_font` and must match a font file the
+// ffmpeg render server has installed — these are Google Fonts names (the
+// server-side workflow needs those font files available; falls back to its
+// own default if a name isn't found). `css` is only used for the browser
+// preview via GOOGLE_FONTS_HREF below.
+export const OVERLAY_FONTS = [
+  { value: 'Poppins', label: 'Poppins', css: "'Poppins', sans-serif" },
+  { value: 'Montserrat', label: 'Montserrat', css: "'Montserrat', sans-serif" },
+  { value: 'Playfair Display', label: 'Playfair Display', css: "'Playfair Display', serif" },
+  { value: 'Oswald', label: 'Oswald', css: "'Oswald', sans-serif" },
+  { value: 'Raleway', label: 'Raleway', css: "'Raleway', sans-serif" },
+  { value: 'Lato', label: 'Lato', css: "'Lato', sans-serif" },
+  { value: 'Merriweather', label: 'Merriweather', css: "'Merriweather', serif" },
+  { value: 'Cormorant Garamond', label: 'Cormorant Garamond', css: "'Cormorant Garamond', serif" },
+  { value: 'Dancing Script', label: 'Dancing Script', css: "'Dancing Script', cursive" },
+  { value: 'Pacifico', label: 'Pacifico', css: "'Pacifico', cursive" },
+  { value: 'Bebas Neue', label: 'Bebas Neue', css: "'Bebas Neue', sans-serif" },
+  { value: 'Anton', label: 'Anton', css: "'Anton', sans-serif" },
+  { value: 'Great Vibes', label: 'Great Vibes', css: "'Great Vibes', cursive" },
+  { value: 'Cinzel', label: 'Cinzel', css: "'Cinzel', serif" },
+  { value: 'Josefin Sans', label: 'Josefin Sans', css: "'Josefin Sans', sans-serif" },
+  { value: 'Roboto Slab', label: 'Roboto Slab', css: "'Roboto Slab', serif" },
+  { value: 'Abril Fatface', label: 'Abril Fatface', css: "'Abril Fatface', serif" },
+  { value: 'Quicksand', label: 'Quicksand', css: "'Quicksand', sans-serif" },
+  { value: 'Courier Prime', label: 'Mono', css: "'Courier Prime', monospace" },
+  { value: 'Caveat', label: 'Caveat', css: "'Caveat', cursive" },
+];
+export const DEFAULT_OVERLAY_FONT = 'Poppins';
+// One <link> loads previews for every font above — used once by ReelStudio.
+export const GOOGLE_FONTS_HREF =
+  'https://fonts.googleapis.com/css2?' +
+  OVERLAY_FONTS.map((f) => `family=${encodeURIComponent(f.value).replace(/%20/g, '+')}:wght@400;700`).join('&') +
+  '&display=swap';
+
 export const OVERLAY_COLORS = [
   { value: 'white', label: 'White', css: '#ffffff' },
   { value: 'gold', label: 'Gold', css: '#C9A84C' },
@@ -52,6 +115,20 @@ export const OVERLAY_COLORS = [
   { value: 'navy', label: 'Navy', css: '#0B1829' },
   { value: 'black', label: 'Black', css: '#000000' },
   { value: 'red', label: 'Red', css: '#BE123C' },
+  { value: 'rose_gold', label: 'Rose Gold', css: '#E0A899' },
+  { value: 'antique_gold', label: 'Antique Gold', css: '#B08D57' },
+  { value: 'silver', label: 'Silver', css: '#C0C0C8' },
+  { value: 'emerald', label: 'Emerald', css: '#1F5C4D' },
+  { value: 'royal_blue', label: 'Royal Blue', css: '#1D3E8C' },
+  { value: 'maroon', label: 'Maroon', css: '#7A1F2B' },
+  { value: 'blush_pink', label: 'Blush Pink', css: '#F2C9D4' },
+  { value: 'mustard', label: 'Mustard', css: '#D4A017' },
+  { value: 'teal', label: 'Teal', css: '#0C3A38' },
+  { value: 'charcoal', label: 'Charcoal', css: '#2B2B2E' },
+  { value: 'ivory', label: 'Ivory', css: '#FFFFF0' },
+  { value: 'coral', label: 'Coral', css: '#E8734A' },
+  { value: 'plum', label: 'Plum', css: '#5C2A4D' },
+  { value: 'sky_blue', label: 'Sky Blue', css: '#7EC8E3' },
 ];
 export const DEFAULT_OVERLAY_COLOR = 'white';
 
@@ -87,7 +164,7 @@ export function endOverlayDuration(lengthSeconds) {
   return Math.min(4, Math.max(1, Math.ceil(lengthSeconds / 2)));
 }
 
-export async function uploadReelImage(fileOrBlob, filename = 'reel.jpg') {
+export async function uploadReelImage(fileOrBlob, filename = 'reel.webp') {
   const compressed = await compressImage(fileOrBlob);
   const fd = new FormData();
   fd.append('file', compressed, filename);

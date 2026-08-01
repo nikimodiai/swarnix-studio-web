@@ -26,7 +26,7 @@ export async function saveStoreBranding(userId, { storeName, storePhone, storeLo
 export async function uploadStoreLogo(file) {
   const compressed = await compressImage(file, { maxPx: 600, quality: 0.9 });
   const fd = new FormData();
-  fd.append('file', compressed, 'logo.jpg');
+  fd.append('file', compressed, 'logo.webp');
   fd.append('upload_preset', CLOUDINARY_PRESET);
   fd.append('folder', 'swarnix-store-branding');
   const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: fd });

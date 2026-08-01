@@ -177,9 +177,6 @@ export default function BuyCredits({ onBack }) {
                     {pct > 0 && <span className={styles.discountPill}>{pct}% OFF</span>}
                     <span className={styles.price}>{formatINR(pack.discounted_price, pack.currency)}<span className={styles.gstStar}>*</span></span>
                     {pct > 0 && <span className={styles.strike}>{formatINR(pack.price, pack.currency)}</span>}
-                    <span className={styles.payable}>
-                      {formatINR(priceBreakup(pack.discounted_price).total, pack.currency)} payable
-                    </span>
                   </div>
                 </div>
                 <button
@@ -198,8 +195,7 @@ export default function BuyCredits({ onBack }) {
 
       <p className={styles.fineprint}>
         <b>*</b> Pack prices are exclusive of tax. <b>{Math.round(GST_RATE * 100)}% GST</b> is added at
-        checkout — the <b>payable</b> figure on each pack is the exact amount you'll pay, and
-        you'll see the full breakup before we hand you over to Razorpay.
+        checkout — you'll see the full breakup before we hand you over to Razorpay.
       </p>
       <p className={styles.fineprint}>
         Payments are processed securely by Razorpay. Credits never expire.
@@ -234,9 +230,6 @@ export default function BuyCredits({ onBack }) {
                   <span>Total payable</span><span>{formatINR(total, cur)}</span>
                 </div>
               </div>
-              <p className={styles.confirmNote}>
-                Razorpay will ask you to pay exactly {formatINR(total, cur)}.
-              </p>
               <div className={styles.confirmActions}>
                 <button className={styles.confirmCancel} onClick={() => setConfirmPack(null)}>
                   Cancel

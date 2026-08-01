@@ -7,6 +7,7 @@ import { reelPosterUrl } from '../../lib/reels';
 import { nativeShareMedia, shareToWhatsApp, copyLink, downloadMedia } from '../../lib/share';
 import { downloadUrlFor, hasCleanDownloads } from '../../lib/watermark';
 import { SuiteFeatureHeader } from '../StudioSuite';
+import GuideButton from '../../components/GuideButton';
 import hub from '../StudioSuite.module.css';
 import styles from './StudioLibrary.module.css';
 
@@ -135,6 +136,7 @@ export default function StudioLibrary({ onBack }) {
       <SuiteFeatureHeader
         onBack={onBack} icon={Images} title="Library"
         sub="Every photo and video you’ve generated with AI Studio Suite."
+        right={<GuideButton id="library" />}
       />
 
       <div className={styles.toolbar}>
