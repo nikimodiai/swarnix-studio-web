@@ -88,7 +88,14 @@ export async function chargeSuiteGraded(ownerId, units) {
     const res = await reserveCredits(n);
     if (!res.ok) return { ok: false, grade: 'paid' };
     if (res.fromPaid > 0) return { ok: true, grade: 'paid' };
-    // Entirely free-funded — but a returning paying customer never gets watermarked.
+    // Entirely free-funded — but a returning paying customer never gets
+    // watermarked. This branch carries more weight than it looks: the reserve
+    // RPC spends the FREE allowance first, so a buyer who still has free
+    // credits left keeps landing here on every new generation. It is
+    // hasCleanDownloads() alone that stops their output being watermarked
+    // after they've paid — which is why app_has_paid_grade() must mean "has
+    // ever bought", not "has already spent a paid credit". When that RPC
+    // meant the latter, this returned 'free' for paying customers forever.
     const alreadyPaying = await hasCleanDownloads().catch(() => false);
     return { ok: true, grade: alreadyPaying ? 'paid' : 'free' };
   } catch {

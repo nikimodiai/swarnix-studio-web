@@ -84,7 +84,17 @@
 .resultGrid { display: grid; grid-template-columns: 1fr; gap: 10px; width: 100%; }
 .resultGrid[data-multi='true'] { grid-template-columns: 1fr 1fr; }
 .resultWrap { position: relative; border-radius: 10px; overflow: hidden; }
-.resultImg { width: 100%; display: block; border-radius: 10px; }
+/* Capped so a tall render fits the screen instead of forcing a scroll;
+   contain letterboxes within the cap rather than cropping. */
+.resultImg {
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+  border-radius: 10px;
+}
 .maximizeBtn {
   position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; border-radius: 8px;
   background: rgba(0,0,0,0.55); color: #fff; border: none; display: grid; place-items: center; cursor: pointer;

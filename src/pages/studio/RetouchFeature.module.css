@@ -93,7 +93,11 @@
 }
 .resultPlaceholder svg { color: var(--gold); }
 .resultWrap { position: relative; width: 100%; height: 100%; }
-.resultImg { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* `object-fit: cover` here was cropping the result to fill the frame — the same
+   class of bug as the c_fill crop in the n8n workflow, just client-side. On a
+   tall render it cut the jewellery out of the visible area even though the
+   stored image was complete. contain fits the whole piece inside the box. */
+.resultImg { width: 100%; height: 100%; object-fit: contain; display: block; }
 .maximizeBtn {
   position: absolute; top: 10px; right: 10px;
   width: 30px; height: 30px; border-radius: 8px; border: none;

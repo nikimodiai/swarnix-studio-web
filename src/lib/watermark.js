@@ -129,7 +129,18 @@ export async function saveGeneration({ url, grade, ...row }) {
       cleanPublicId = clean.publicId;
       imageUrl = watermarkedUrl(clean.url);
     } catch {
+      // Archiving failed (Cloudinary fetch error, rate limit, network). We
+      // still watermark, but we MUST record a clean reference or the paid
+      // unlock has nothing to return and the image stays marked forever —
+      // that silently broke the "buy once, everything unlocks" promise.
+      //
+      // The watermark is a delivery transform over the original asset, so the
+      // clean copy already exists at the source url's own public_id. Record
+      // that. It is a weaker secret than the random archive id (a determined
+      // free user could guess the un-transformed url), which is exactly why
+      // it's the fallback and not the primary path.
       imageUrl = watermarkedUrl(url);
+      cleanPublicId = publicIdFromUrl(url);
     }
   }
 

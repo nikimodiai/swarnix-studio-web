@@ -125,6 +125,9 @@
 .previewImg {
   width: 100%;
   height: auto;
+  /* Same reason as .resultImg: a tall source photo would otherwise push the
+     generate button off-screen. Capped, and contain keeps every pixel visible. */
+  max-height: 55vh;
   display: block;
   /* object-fit: contain keeps every pixel visible with no cropping */
   object-fit: contain;
@@ -569,7 +572,18 @@
 .resultsGrid { display: grid; grid-template-columns: 1fr; gap: 12px; }
 .resultsGrid[data-multi="true"] { grid-template-columns: repeat(2, 1fr); }
 .resultCell { display: flex; flex-direction: column; gap: 7px; }
-.resultImg { width: 100%; height: auto; display: block; object-fit: contain; }
+/* Results can be tall verticals (9:16 renders at 768x1344). Width:100% alone
+   would blow past the viewport and force a scroll just to see one image, so cap
+   the height and let object-fit:contain letterbox within it. `height:auto` keeps
+   short/wide results at their natural size — the cap only bites on tall ones. */
+.resultImg {
+  width: 100%;
+  height: auto;
+  max-height: 70vh;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
 
 .addBtnSm {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
